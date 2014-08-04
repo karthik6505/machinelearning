@@ -1,0 +1,831 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!-- saved from url=(0035)http://cs.joensuu.fi/sipu/datasets/ -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+  <title>Clustering datasets</title>
+  <link href="./Clustering datasets_files/main.css" rel="stylesheet" type="text/css">
+  
+</head>
+<body>
+
+<div id="content">
+<h1>Clustering datasets</h1>
+
+Speech and Image Processing Unit<br>
+School of Computing<br>
+University of Eastern Finland<br>
+P.O.Box 111<br>
+FIN-80101 Joensuu<br>
+Finland<br>
+
+
+<table>
+
+<tbody><tr>
+  <td class="subtitle" colspan="3">Image data</td>
+</tr>
+<tr>
+   <td align="center">
+   <a href="ftp://cs.joensuu.fi/franti/images/bridge.pgm"><img src="./Clustering datasets_files/bridge.png" alt="[bridge.pgm]"></a><br> 
+   <b>Bridge</b><br>
+   (256x256)<br>
+  </td>
+   <td align="center">
+   <img src="./Clustering datasets_files/bridge_data.png" title="Non-overlapping 4x4 pixel blocks of the grayscale image"><br>
+   4096 vectors, 16-d<br>
+  </td>
+  <td>
+   4x4 pixel blocks&nbsp;
+   <a href="ftp://cs.joensuu.fi/franti/ts/bridge.ts">ts</a>&nbsp;
+   <a href="http://cs.joensuu.fi/sipu/datasets/bridge.txt">txt</a><br>
+   4x4 binarized pixel blocks&nbsp;
+   <a href="ftp://cs.joensuu.fi/franti/ts/bridge2.ts">ts</a>&nbsp;
+   <a href="http://cs.joensuu.fi/sipu/datasets/bridge2.txt">txt</a><br>
+   4x4 pixel blocks: 25% random subsample&nbsp;
+   <a href="ftp://cs.joensuu.fi/franti/ts/br25.ts">ts</a>&nbsp;
+   <a href="http://cs.joensuu.fi/sipu/datasets/br25.txt">txt</a><br>
+   4x4 pixel blocks: 75% random subsample&nbsp;
+   <a href="ftp://cs.joensuu.fi/franti/ts/br75.ts">ts</a>&nbsp;
+   <a href="http://cs.joensuu.fi/sipu/datasets/br75.txt">txt</a><br>
+  </td>
+</tr>
+
+<tr>
+  <td align="center">
+    <a href="ftp://cs.joensuu.fi/franti/images/house.ppm"><img src="./Clustering datasets_files/house.png" alt="[house.ppm]"></a><br>
+    <b>House</b><br>(256x256)<br>
+  </td>
+  <td>
+    <img src="./Clustering datasets_files/house_data.png" title="RGB-values from the picture"><br>
+    34112 vectors, 3-d<br>
+  </td>
+  <td>
+    RGB-values, quantized to 5 bits per color&nbsp;
+    <a href="ftp://cs.joensuu.fi/franti/ts/housec5.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/housec5.txt">txt</a><br>
+    RGB-values, 8 bits per color&nbsp;
+    <a href="ftp://cs.joensuu.fi/franti/ts/housec8.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/housec8.txt">txt</a><br>
+  </td>
+</tr>
+
+<tr>
+  <td align="center">
+    <a href="ftp://cs.joensuu.fi/franti/images/missa001.pgm"><img src="./Clustering datasets_files/missa.png" alt="[missa001.pgm]"></a><br>
+    <b>Miss America</b><br>(360x288)<br>
+  </td>
+  <td>
+    <img src="./Clustering datasets_files/missa_data.png" title="4x4 residual vectors between two video frames"><br>
+    6480 vectors, 16-d<br>
+  </td>
+  <td>
+    4x4 residual blocks between frames 1 and 2&nbsp;
+    <a href="ftp://cs.joensuu.fi/franti/ts/missa1.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/missa1.txt">txt</a><br>
+    4x4 residual blocks between frames 2 and 3&nbsp;
+    <a href="ftp://cs.joensuu.fi/franti/ts/missa2.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/missa2.txt">txt</a><br>
+  </td>
+</tr>
+
+<tr>
+ <td> &nbsp; </td>
+</tr>
+
+<tr>
+  <td class="subtitle" colspan="4">
+  Birch-sets
+  </td>
+</tr><tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/birch1.png" title="Clusters in regular grid structure"><br>
+    <b>Birch1</b><br>
+  </td>
+  <td align="center">
+    <img src="./Clustering datasets_files/birch2.png" title="Clusters at a sine curve"><br>
+    <b>Birch2</b><br>
+  </td>
+  <td>
+    100 000 synthetic 2-d data in 100 clusters.<br><br>
+    Zhang et al., "BIRCH: A new data clustering algorithm and its applications", 
+    <em>Data Mining and Knowledge Discovery</em>, 1 (2), 141-182, 1997.<br>
+  </td>
+</tr>
+
+<tr>
+  <td align="center">  
+    <img src="./Clustering datasets_files/birch3.png" title="Random sized clusters in random locations"><br>
+    <b>Birch3</b><br>
+  </td>
+
+  <td align="center">
+    &nbsp;
+  </td>
+  <td valign="top">
+
+    <br>
+    <b>Birch1:</b>&nbsp;Clusters in regular grid structure&nbsp;
+    <a href="ftp://cs.joensuu.fi/franti/ts/birch1.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/birch1.txt">txt</a><br>
+
+    <b>Birch2:</b>&nbsp;Clusters at a sine curve&nbsp;
+    <a href="ftp://cs.joensuu.fi/franti/ts/birch2.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/birch2.txt">txt</a><br>
+
+    <b>Birch3:</b>&nbsp;Random sized clusters in random locations&nbsp;
+    <a href="ftp://cs.joensuu.fi/franti/ts/birch3.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/birch3.txt">txt</a><br>
+
+  </td>
+</tr>
+
+<tr>
+ <td> &nbsp; </td>
+</tr>
+
+<tr>
+  <td class="subtitle" colspan="4">S-sets</td>
+</tr>
+<tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/s1.png" alt="S1" title="S1"><br>
+    <b>S1</b><br>
+    <img src="./Clustering datasets_files/s3.png" alt="S3" title="S3"><br>
+    <b>S3</b><br>
+  </td>
+  <td align="center">
+   <img src="./Clustering datasets_files/s2.png" alt="S2" title="S2"><br>
+   <b>S2</b><br>
+   <img src="./Clustering datasets_files/s4.png" alt="S4" title="S4"><br>
+   <b>S4</b><br>
+  </td>
+  <td>
+    Synthetic 2-d data with 5000 vectors and 15 Gaussian clusters with different degree of cluster overlapping.<br><br>
+    P. Fränti and O. Virmajoki, "Iterative shrinking method for 
+    clustering problems", <em>Pattern Recognition</em>, 39 (5), 761-765, 
+    May 2006.<br><br>
+
+
+    <b>S1:</b>&nbsp;
+    <a href="ftp://cs.joensuu.fi/franti/ts/s1.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/s1.txt">txt</a><br>
+    <b>S2:</b>&nbsp;
+    <a href="ftp://cs.joensuu.fi/franti/ts/s2.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/s2.txt">txt</a><br>
+    <b>S3:</b>&nbsp;
+    <a href="ftp://cs.joensuu.fi/franti/ts/s3.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/s3.txt">txt</a><br>
+    <b>S4:</b>&nbsp;
+    <a href="ftp://cs.joensuu.fi/franti/ts/s4.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/s4.txt">txt</a><br><br>
+    <b>Source and labels:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/s-originals.zip">zip</a><br>
+ 
+  </td>
+</tr>
+
+<tr>
+ <td> &nbsp; </td>
+</tr>
+
+<tr>
+<td class="subtitle" colspan="4">A-sets</td>
+</tr>
+<tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/a1.png" alt="A1" title="A1"><br>
+    <b>A1</b><br>
+    3000 vectors, <br>
+    20 clusters<br>
+  </td>
+  <td align="center">
+    <img src="./Clustering datasets_files/a2.png" alt="A2" title="A2"><br>    
+    <b>A2</b><br>
+    5250 vectors, <br>
+    35 clusters<br>
+  </td> 
+  <td>
+    Synthetic 2-d data with varying number of clusters and vectors. <br><br>
+
+    <b>A1:</b>&nbsp;
+    <a href="ftp://cs.joensuu.fi/franti/ts/a1.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/a1.txt">txt</a><br>
+    <b>A2:</b>&nbsp;
+    <a href="ftp://cs.joensuu.fi/franti/ts/a2.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/a2.txt">txt</a><br>
+    <b>A3:</b>&nbsp;
+    <a href="ftp://cs.joensuu.fi/franti/ts/a3.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/a3.txt">txt</a><br>
+   </td>
+</tr><tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/a3.png" alt="A3" title="A3"><br>
+    <b>A3</b><br>
+    7500 vectors, <br>
+    50 clusters<br>
+  </td>
+  <td>
+    &nbsp;
+  </td>
+  <td>
+    &nbsp;
+  </td>
+</tr>
+
+<tr>
+ <td> &nbsp; </td>
+</tr>
+
+<tr>
+  <td class="subtitle" colspan="4">Dim-sets</td>
+</tr>
+
+<tr>
+  <td align="center">
+    &nbsp; 
+  </td>
+  <td align="center">
+    <img src="./Clustering datasets_files/dim2.png" alt="Dim2"><br>
+    <b>Dim2</b><br>
+  </td>
+  <td>
+    Synthetic data with Gaussian clusters in multi-dimensional space.<br>
+    1351-10126 vectors, 2-d - 15-d<br><br>
+    <a href="ftp://cs.joensuu.fi/franti/ts/data_dim.zip">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/data_dim_txt.zip">txt</a><br>    
+  </td> 
+</tr>
+
+<tr>
+<td class="subtitle" colspan="4">DIM-sets (other)</td>
+</tr>
+<tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/DIM032.png" alt="DIM032" title="DIM032" height="100"><br>
+    <b>DIM032</b><br>
+    1024 vectors, <br>
+    16 clusters<br>
+    32 dimensions<br>
+  </td>
+  <td align="center">
+    <img src="./Clustering datasets_files/DIM064.png" alt="DIM064" title="DIM064" height="100"><br>
+    <b>DIM064</b><br>
+    1024 vectors, <br>
+    16 clusters<br>
+    64 dimensions<br>
+  </td>
+  <td>
+    Dim-sets. <br><br>
+
+    <b>DIM032:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/DIM032.TS">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/DIM032.txt">txt</a><br>
+    <b>DIM064:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/DIM064.TS">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/DIM064.txt">txt</a><br>
+    <b>DIM128:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/DIM128.TS">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/DIM128.txt">txt</a><br>
+    <b>DIM256:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/dim256.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/dim256.txt">txt</a><br>
+    <b>DIM512:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/dim512.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/dim512.txt">txt</a><br>
+    <b>DIM1024:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/dim1024.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/dim1024.txt">txt</a><br>
+    <br>
+    Ground truths in <a href="http://cs.joensuu.fi/sipu/datasets/dim-cb.zip">cb</a> and <a href="http://cs.joensuu.fi/sipu/datasets/dim-txt.zip">txt</a> format.<br>
+   </td>
+</tr>
+
+
+<tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/DIM128.png" alt="DIM128" title="DIM128" height="100"><br>
+    <b>DIM128</b><br>
+    1024 vectors, <br>
+    16 clusters<br>
+    128 dimensions<br>
+  </td>
+  <td align="center">
+    <img src="./Clustering datasets_files/dim256.png" alt="DIM256" title="DIM256" height="100"><br>
+    <b>DIM256</b><br>
+    1024 vectors, <br>
+    16 clusters<br>
+    256 dimensions<br>
+  </td>
+  <td>
+    &nbsp;
+   </td>
+</tr>
+
+
+<tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/dim512.png" alt="DIM512" title="DIM512" height="100"><br>
+    <b>DIM512</b><br>
+    1024 vectors, <br>
+    16 clusters<br>
+    512 dimensions<br>
+  </td>
+  <td align="center">
+    <img src="./Clustering datasets_files/dim1024.png" alt="DIM1024" title="DIM1024" height="100"><br>
+    <b>DIM1024</b><br>
+    1024 vectors, <br>
+    16 clusters<br>
+    1024 dimensions<br>
+  </td>
+  <td>
+    &nbsp;
+   </td>
+</tr>
+
+
+<tr>
+ <td> &nbsp; </td>
+</tr>
+
+<tr>
+<td class="subtitle" colspan="4">KDDCUP04Bio set</td>
+</tr>
+<tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/KDDCUP04Bio.png" alt="KDDCUP04Bio" title="KDDCUP04Bio" height="100"><br>
+    <b>KDDCUP04Bio</b><br>
+    145751 vectors, <br>
+    2000 clusters<br>
+    74 dimensions<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    KDDCUP04Bio biology dataset. <br><br>
+
+    <b>KDDCUP04Bio:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/KDDCUP04Bio.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/KDDCUP04Bio.txt">txt</a><br>
+   </td>
+</tr>
+
+
+
+<tr>
+<td class="subtitle" colspan="4">UCI datasets</td>
+</tr>
+<tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/thyroid.png" alt="Thyroid" title="Thyroid" height="100"><br>
+    <b>Thyroid</b><br>
+    215 vectors, <br>
+    2 clusters<br>
+    5 dimensions<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    Thyroid dataset. <br><br>
+
+    <b>Thyroid:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/thyroid.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/thyroid.txt">txt</a><br>
+   </td>
+</tr>
+
+
+
+<tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/wine.png" alt="Wine" title="Wine" height="100"><br>
+    <b>Wine</b><br>
+    178 vectors, <br>
+    3 clusters<br>
+    13 dimensions<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    Wine dataset. <br><br>
+
+    <b>Wine:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/wine.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/wine.txt">txt</a><br>
+   </td>
+</tr>
+
+
+<tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/yeast_times100.png" alt="Yeast" title="Yeast" height="100"><br>
+    <b>Yeast</b><br>
+    1484 vectors, <br>
+    10 clusters<br>
+    8 dimensions<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    Yeast dataset. <br><br>
+
+    <b>Yeast:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/yeast.txt">txt</a><br>
+    <b>Yeast_times100:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/yeast_times100.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/yeast_times100.txt">txt</a><br>
+
+   </td>
+</tr>
+
+
+<tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/breast.png" alt="Breast" title="Breast" height="100"><br>
+    <b>Breast</b><br>
+    699 vectors, <br>
+    2 clusters<br>
+    9 dimensions<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    Breast-cancer-Wisconsin dataset. <br><br>
+
+    <b>Breast:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/breast.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/breast.txt">txt</a><br>
+    <br>
+    <a href="http://cs.joensuu.fi/sipu/datasets/sources.txt">info</a><br>
+   </td>
+</tr>
+
+
+<tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/iris.jpg" alt="Iris" title="Iris" height="100"><br>
+    <b>Iris</b><br>
+    150 vectors, <br>
+    4 dimensions<br>
+    3 clusters<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    Iris dataset. <br><br>
+
+    <b>Iris:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/iris.ts">ts</a><br>
+    <a href="http://cs.joensuu.fi/sipu/datasets/iris.txt">txt</a> without labels<br>
+    <a href="http://cs.joensuu.fi/sipu/datasets/iris.data.txt">txt</a> with labels<br>
+   </td>
+</tr>
+
+
+<tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/glass.png" alt="Glass" title="Glass" height="100"><br>
+    <b>Glass</b><br>
+    214 vectors, <br>
+    9 dimensions<br>
+    7 clusters<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    Glass dataset. <br><br>
+
+    <b>Glass:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/glass.ts">ts</a><br>
+    <a href="http://cs.joensuu.fi/sipu/datasets/glass.txt">txt</a> without labels<br>
+    <a href="http://cs.joensuu.fi/sipu/datasets/glass.data.txt">txt</a> with labels<br>
+   </td>
+</tr>
+
+
+<tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/wdbc.png" alt="Wdbc" title="Wdbc" height="100"><br>
+    <b>Wdbc</b><br>
+    569 vectors, <br>
+    32 dimensions<br>
+    2 clusters<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    Wdbc dataset. <br><br>
+
+    <b>Wdbc:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/wdbc.ts">ts</a><br>
+    <a href="http://cs.joensuu.fi/sipu/datasets/wdbc.txt">txt</a> numeric, 31 dim.<br>
+    <a href="http://cs.joensuu.fi/sipu/datasets/wdbc.data.txt">txt</a><br>
+   </td>
+</tr>
+
+
+
+<tr>
+<td class="subtitle" colspan="4">g2 sets</td>
+</tr>
+<tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/g2-2-30.png" alt="g2-2-30" title="g2-2-30" height="100"><br>
+    <b>g2-2-30</b><br>
+    1024 vectors per cluster, <br>
+    2 clusters<br>
+    1-1024 dimensions<br>
+    variance 10-100<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    Gaussian clusters dataset. <br><br>
+
+    <b>g2:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/g2sets.zip">ts's in zip file (53MB)</a>&nbsp;
+   </td>
+</tr>
+
+<tr>
+<td class="subtitle" colspan="4">Shape sets</td>
+</tr>
+
+<tr><td>
+</td>
+<td>
+</td>
+<td>
+    <img src="./Clustering datasets_files/Datasets_from_literature.png" alt="from_literature" title="from_literature" height="250"><br>
+</td>
+</tr>
+
+<tr><td></td><td></td><td>Third column is the label.</td></tr>
+
+<tr>
+  <td align="center">
+    <b>Aggregation</b><br>
+    788 vectors, <br>
+    2 dimensions<br>
+    7 clusters<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    <b>Aggregation:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/Aggregation.txt">txt</a><br>
+    Gionis, A., H. Mannila, and P. Tsaparas, Clustering aggregation.
+    ACM Transactions on Knowledge Discovery from Data (TKDD),
+    2007. 1(1): p. 1-30.<br>
+</td>
+</tr>
+
+<tr>
+  <td align="center">
+    <b>Compound</b><br>
+    399 vectors, <br>
+    2 dimensions<br>
+    6 clusters<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    <b>Compound:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/Compound.txt">txt</a><br>
+    Zahn, C.T., Graph-theoretical methods for detecting and describing
+    gestalt clusters. Computers, IEEE Transactions on, 1971. 100(1): p. 68-86.
+    <br>
+</td>
+</tr>
+
+<tr>
+  <td align="center">
+    <b>Pathbased</b><br>
+    300 vectors, <br>
+    2 dimensions<br>
+    3 clusters<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    <b>Pathbased:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/pathbased.txt">txt</a><br>
+    Chang, H. and D.Y. Yeung, Robust path-based spectral clustering.
+    Pattern Recognition, 2008. 41(1): p. 191-203.
+    <br>
+</td>
+</tr>
+
+<tr>
+  <td align="center">
+    <b>Spiral</b><br>
+    312 vectors, <br>
+    2 dimensions<br>
+    3 clusters<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    <b>Spiral:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/spiral.txt">txt</a><br>
+    Chang, H. and D.Y. Yeung, Robust path-based spectral clustering.
+    Pattern Recognition, 2008. 41(1): p. 191-203.
+    <br>
+</td>
+</tr>
+
+<tr>
+  <td align="center">
+    <b>D31</b><br>
+    3100 vectors, <br>
+    2 dimensions<br>
+    31 clusters<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    <b>D31:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/D31.txt">txt</a><br>
+    Veenman, C.J., M.J.T. Reinders, and E. Backer, A maximum variance cluster
+    algorithm. Pattern Analysis and Machine Intelligence,
+    IEEE Transactions on, 2002. 24(9): p. 1273-1280.
+    <br>
+</td>
+</tr>
+
+<tr>
+  <td align="center">
+    <b>R15</b><br>
+    600 vectors, <br>
+    2 dimensions<br>
+    15 clusters<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    <b>R15:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/R15.txt">txt</a><br>
+    Veenman, C.J., M.J.T. Reinders, and E. Backer, A maximum variance cluster
+    algorithm. Pattern Analysis and Machine Intelligence,
+    IEEE Transactions on, 2002. 24(9): p. 1273-1280.
+    <br>
+</td>
+</tr>
+
+<tr>
+  <td align="center">
+    <b>Jain</b><br>
+    373 vectors, <br>
+    2 dimensions<br>
+    2 clusters<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    <b>Jain:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/jain.txt">txt</a><br>
+    Jain, A. and M. Law, Data clustering: A user's dilemma.
+    Lecture Notes in Computer Science, 2005. 3776: p. 1-10.
+    <br>
+</td>
+</tr>
+
+<tr>
+  <td align="center">
+    <b>Flame</b><br>
+    240 vectors, <br>
+    2 dimensions<br>
+    2 clusters<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    <b>Flame:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/flame.txt">txt</a><br>
+    Fu, L. and E. Medico, FLAME, a novel fuzzy clustering method for
+    the analysis of DNA microarray data. BMC bioinformatics, 2007. 8(1): p. 3.
+    <br>
+</td>
+</tr>
+
+<tr>
+<td class="subtitle" colspan="4">Mopsi locations</td>
+</tr>
+<tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/MopsiLocationsUntil2012-Finland.jpg" alt="users_locations_Finland" title="Mopsi Locations Finland" height="100"><br>
+    <b>Users' locations</b><br>
+    13467 vectors, <br>
+    2 dimensions<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    Mopsi locations Finland until 2012 dataset. <br><br>
+
+    <b>Users' locations:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/MopsiLocationsUntil2012-Finland.cb">cb</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/MopsiLocationsUntil2012-Finland.txt">txt</a>&nbsp;
+   </td>
+</tr>
+
+<tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/MopsiLocations2012-Joensuu.jpg" alt="MopsiLocations2012-Joensuu" title="MopsiLocations2012-Joensuu" height="100"><br>
+    <b>Users' locations, Joensuu</b><br>
+    6014 vectors, <br>
+    2 dimensions<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    Users' locations in Joensuu 2012 dataset. <br><br>
+
+    <b>Users' locations Joensuu:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/MopsiLocations2012-Joensuu.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/MopsiLocations2012-Joensuu.txt">txt</a>&nbsp;
+   </td>
+</tr>
+
+<tr>
+<td class="subtitle" colspan="4">Europe</td>
+</tr>
+<tr>
+  <td align="center">
+    <img src="./Clustering datasets_files/europe.png" alt="europe" title="Europe" height="100"><br>
+    <b>Europe</b><br>
+    169308 vectors, <br>
+    2 dimensions<br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    Europe dataset. <br><br>
+
+    <b>Europe:</b>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/europe.ts">ts</a>&nbsp;
+    <a href="http://cs.joensuu.fi/sipu/datasets/europe.txt">txt</a>&nbsp;
+   </td>
+</tr>
+
+<tr>
+<td class="subtitle" colspan="4">Miscellaneous</td>
+</tr>
+<tr>
+  <td align="center">
+    <b>ConfLongDemo_JSI_164860</b><br>
+    <b>t4.8k</b><br>
+    <b>MINST</b><br>
+  </td>
+  <td>
+&nbsp;
+  </td>
+  <td>
+    <a href="http://cs.joensuu.fi/sipu/datasets/ConfLongDemo_JSI_164860.txt">ConfLongDemo_JSI_164860.txt</a>&nbsp;<br>
+    <a href="http://cs.joensuu.fi/sipu/datasets/t4.8k.txt">t4.8k.txt</a>&nbsp;<br>
+    <a href="http://cs.joensuu.fi/sipu/datasets/MINST.txt">MINST.txt</a>&nbsp;
+   </td>
+</tr>
+
+
+
+
+
+
+</tbody></table>
+
+<h3>Related links</h3>
+<ul>
+<li><a href="http://cs.joensuu.fi/sipu/soft/modules.zip">Programming interface (modu*.zip) 
+      to handle data sets (cb/ts-format)</a></li>
+<li><a href="http://cs.joensuu.fi/sipu/soft/Cluster2009.exe">Windows software for visualizing data sets</a></li>
+<li><a href="http://cs.joensuu.fi/sipu/soft/cb2txt.zip">Software for converting data sets to text</a></li>
+<li><a href="http://netpbm.sourceforge.net/doc/ppm.html">PPM/PNM/PBM image formats</a></li>
+
+</ul>
+
+
+
+</div>
+
+
+
+</body></html>

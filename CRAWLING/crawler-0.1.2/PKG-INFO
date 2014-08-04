@@ -1,0 +1,23 @@
+Metadata-Version: 1.1
+Name: crawler
+Version: 0.1.2
+Summary: python crawler.
+Home-page: http://code.google.com/p/python-crawler/
+Author: Yifei Jiang
+Author-email: jiangyifei@gmail.com
+License: Apache License 2.0
+Download-URL: http://code.google.com/p/python-crawler/downloads/list
+Description: python crawler.
+Keywords: python crawler spider
+Platform: UNKNOWN
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 2.6
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Other Environment
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Internet :: WWW/HTTP
+Requires: lxml
+Requires: bsddb3
