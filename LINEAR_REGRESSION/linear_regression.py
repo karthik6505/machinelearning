@@ -709,12 +709,13 @@ def apply_lasso( X_train, Y_train, alpha=None ):
 
 # ##########################################################################################
 def apply_sgd_( X_train, Y_train, alpha=0.0003, shuffle=True):
+    n_iter = np.ceil(10**6 / len(Y_train))
     model = SGDRegressor(loss='squared_loss', 
                          penalty='l2', 
                          alpha=alpha,
                          epsilon=0.01,
                          fit_intercept=True, 
-                         n_iter=16383, shuffle=shuffle, random_state=int(time.time()*16384)%16384, warm_start=False,
+                         n_iter=n_iter, shuffle=shuffle, random_state=int(time.time()*8192)%8192, warm_start=False,
                          verbose=0, 
                          learning_rate='invscaling' )
     # model.fit_transform( X_train, Y_train )

@@ -39,7 +39,7 @@ from sklearn.preprocessing import label_binarize
 from sklearn.multiclass import OneVsRestClassifier
 
 
-def roc( X, y, clf, n=2, cname="", idx="0", debug=0 ):
+def roc( X, y, clf, n=2, cname="", idx="0", debug=0, do_plot=False ):
     # Learn to predict each class against the other
     classifier = OneVsRestClassifier(clf)
     proba_estimates = [ x for x in dir(classifier) if "predict_proba" in x ]
@@ -96,7 +96,7 @@ def roc( X, y, clf, n=2, cname="", idx="0", debug=0 ):
     
     # Plot ROC curve
     roc_fig = plt.figure(int(idx), figsize=(6,6))
-    plt.plot(fpr["micro"], tpr["micro"], label='micro-average ROC curve (area = {0:0.2f})' ''.format(roc_auc["micro"]))
+    plt.plot(fpr["micro"], tpr["micro"], label='Micro-averaged ROC (area = {0:0.2f})' ''.format(roc_auc["micro"]))
     for i in range(n_classes):
         plt.plot(fpr[i], tpr[i], label='ROC curve of class {0} (area = {1:0.2f})' ''.format(i, roc_auc[i]))
     plt.plot([0, 1], [0, 1], 'k--')
@@ -104,14 +104,15 @@ def roc( X, y, clf, n=2, cname="", idx="0", debug=0 ):
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('Some extension of Receiver operating characteristic to multi-class')
+    plt.title('Multi-Class ROC')
     plt.legend(loc="lower right")
 
     if not cname:
         roc_fig.show()
     else:
-        roc_fig.savefig( "roc_%s_subplot_%s.pdf" % (cname, idx) )
-        return roc_fig 
+        if do_plot: roc_fig.savefig( "roc_%s_subplot_%s.pdf" % (cname, idx) )
+
+    return roc_fig 
 
 
 if __name__ == "__main__":
