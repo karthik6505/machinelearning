@@ -153,10 +153,10 @@ DO_REGRESSION_DIAGNOSTICS = function( X_TEST_SCALED, Y_TEST_SCALED, SGD_Y_TEST, 
     par( op )
 
     # ######################################################################################################
-    print( "ARE_THESE_REPRESENTATIVE_OF_SAME_SOURCE?" )
+    print( "ARE THESE REPRESENTATIVE OF SIMILAR/SAME SOURCES?" )
     FINDINGS = ARE_THESE_REPRESENTATIVE_OF_SAME_SOURCE( Y_TEST_SCALED, 
                                                         SGD_Y_TEST,    nmax=0, confidence_level=0.999 )
-    print( FINDINGS )
+    cat( HEADER)
     # ######################################################################################################
 
     # ######################################################################################################
@@ -172,9 +172,10 @@ DO_REGRESSION_DIAGNOSTICS = function( X_TEST_SCALED, Y_TEST_SCALED, SGD_Y_TEST, 
     sum_txt = summary( EXTEND_DF( as.data.frame(XY_TEST), as.data.frame(SGD_Y_TEST), colname="YP") )
     fit_txt = summary( FIT )
 
-    cat(HEADER)
+    NEWLINE(3) ; cat(HEADER)
     print ( sum_txt )
     cat(HEADER)
+    NEWLINE(3) ; cat(HEADER)
     print ( fit_txt )
     cat(HEADER)
 

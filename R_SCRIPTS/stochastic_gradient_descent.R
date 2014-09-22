@@ -46,20 +46,21 @@ source( 'regression.R' )
 # minibatch fixing? 
 # trycatch on matrix vs. loop (if matrix fails)
 # plotting periodically to file? for stochastic?
-# gpl - license & copyright & authorship
 # gradient composer for linear regression
 # gradient composer for logistic regression
 # fminunc equivalent alternative
 # conjugate descent and/or bjcs alternative
 # formalized iteractor
 # grid search
-# factor plot code into function
 # coef plot and confidence intervals
 # classifications and probabilities
 # regression/classification performance plot
 # feature selection on scaled train-data subset
 # feature names dictionary
 # confidence intervals and plots for regression and significant wrt anova
+# feature generators for test data given selected features from training data (also for cross validation)
+# pass percentage to dataset builder so that it picks the first rows for training
+# select and store feature generators (interaction terms dictionary so that the indices can again be applied to  te cv and test
 # ######################################################################################################
 
 
@@ -163,28 +164,28 @@ DO_BENCHMARK_COMPARISON = function( BENCHMARK_NAME, YB, BENCHMARK=c(), epsilon=5
     m = length(indices)
 
     DIFF   = YB[indices] - B[indices]
-    ci_lo = mean(DIFF) - sd(DIFF)
-    ci_hi = mean(DIFF) + sd(DIFF)
+    ci_lo  = mean(DIFF) - sd(DIFF)
+    ci_hi  = mean(DIFF) + sd(DIFF)
     errors = which( ci_lo < DIFF || DIFF > ci_hi )
-    print( errors ) ; print  ( DIFF[errors] )
     cnt    = length(errors)
     dev    = sum(DIFF[errors])^2
 
     if ( debug ) { 
+        cat( HEADER )
         print( sprintf( "%8s %18s %18s %18s", "i", "Y[i]", "B[i]", "Y[i]-B[i]" ))
+        cat( HEADER )
         for ( i in errors )
             print( sprintf( "%8d %18.4g %18.4g %18.4g", i, YB[i], B[i], DIFF[i] ))
+        cat( HEADER )
+        if ( cnt >= as.integer(m)*.01)  str( retvals )
+        cat( HEADER )
     }
 
     ci = sprintf( "[%.4g,%.4g]", ci_lo, ci_hi )
     retvals = list( 'n_incompatible'=cnt, 'benchmark_err'=sqrt(dev), 'benchmark_mse'=dev/nrow(YB), 'ci'=ci )
 
-    if (debug) cat( SUBHEADER )
-    print ( sprintf( "BENCHMARK [%32s] FOUND %9.4f AGREEMENT (AT 2-SIGMA INTERVAL ON DIFF %s) (W/ %s:%s SAMPLES)", 
-                      BENCHMARK_NAME, 
-                      (1-cnt/m)*100, ci, m, nrow(YB)) )
-    if ( cnt >= as.integer(m)*.01)  str( retvals )
-    if (debug) cat( HEADER )
+    print ( sprintf( "BENCHMARK [%32s] FOUND: WRT 2-SIGMA C.I. %20s, A %6.2f%% AGREEMENT IS ACHIEVED (W/ %s:%s RANDOM SAMPLES)", 
+                      BENCHMARK_NAME, ci, (1-cnt/m)*100, m, nrow(YB) ) )
 
     return (retvals)
 }
@@ -243,6 +244,13 @@ GET_SGD_NEXT_THETA = function( idx, GIVEN_THETA_OLD, X, Y, mini_batch=c(), alpha
     if ( debug ) print( sprintf( "%4d %16.10f %16.10f", idx, GIVEN_THETA_OLD[idx], SGD_NG_THETA_NEW  ))
 
     return ( SGD_NG_THETA_NEW )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+GET_INITIAL_THETA = function( n ) {
+    theta = as.matrix(rnorm( n+1, 1E-8, 1E-4 ))
 }
 # ######################################################################################################
 
@@ -329,14 +337,15 @@ DO_STOCHASTIC_GRADIENT_DESCENT = function ( Xdf, Y, theta=c(), epsilon=1E-3, lea
         PRINT_PARAMS( PARAMS )
     }
 
-    m = nrow(X)
-    n = ncol(X)
+    m = nrow(Xdf)
+    n = ncol(Xdf)
     X = GET_PLUS1_MATRIX_FROM( Xdf, do_scale=do_scale )
+
     if ( do_scale ) Y = as.matrix( scale(Y, center=TRUE, scale=TRUE ) )
 
     if ( length(theta) == 0 )  {
             theta = as.matrix(rep(0,n+1))
-            theta = as.matrix(rnorm( n+1, 1E-3, 1E-1 ))
+            theta = GET_INITIAL_THETA( n )
     }
 
     iter = 1
@@ -382,7 +391,8 @@ DO_STOCHASTIC_GRADIENT_DESCENT = function ( Xdf, Y, theta=c(), epsilon=1E-3, lea
         term_rvals = APPLY_TERMINATION_CRITERIA( JCOST_OLD, DELTA_JCOST, MEAN_JCOST, epsilon, stabilization_level, learning_rate, iter, imax, imin )
 
         # process termination criteria findings
-        if ( term_rvals$Theta )   THETA_OLD = t(as.matrix(rnorm( n+1, 1E-6, 1E-3 )))
+        if ( term_rvals$Theta )   
+            THETA_OLD = GET_INITIAL_THETA( n )           # THETA_OLD = t(as.matrix(rnorm( n+1, 1E-6, 1E-3 )))
         if ( term_rvals$sx != 1 ) {
             learning_rate = DO_LEARNING_RATE_RESET( learning_rate, sx=term_rvals$sx, debug=TRUE )
             RESETS = append(RESETS,iter)
@@ -645,8 +655,46 @@ VALIDATE_SGD_WITH_NEQS = function( SGD_THETA, NEQ_THETA=c(), X_SCALED, Y_SCALED,
 
 
 # ######################################################################################################
-DO_CONJUGATE_DESCENT = function() {
+# UNCONSTRAINED MINIMIZATION
+# ######################################################################################################
+DO_FMINUNC = function( X, Y ) {
+    theta = GET_INITIAL_THETA(ncol(X)) 
+
+    NEWLINE(2)
+    cat( HEADER )
+    print( "FMINUNC VIA OPTIM W/ BFGS" )
+    cat( HEADER )
+
+    Xx    = GET_PLUS1_MATRIX_FROM( X_TRAIN_SCALED, do_scale=FALSE )
+    Yx    = Y_TRAIN_SCALED
+
+
+    OPTIM = function( theta ) {
+        GET_JCOST( Xx, Yx, t(theta) ) 
+    }
+
+    GRADIENT = function( theta ) {
+        t = c()
+        for ( i in 1:length(theta) ) {
+            ti = GET_SGD_NEXT_THETA( i, theta, Xx, Yx )
+            t = append( t, ti )
+        }
+        theta <<- t
+        return ( t )
+    }
+
+    WO_GR  = optim( theta, OPTIM, gr=NULL, method="BFGS" )
+    retvals = list( 'WO_GR'=WO_GR )
+    print( retvals )
+    cat( HEADER )
+
+    return ( retvals )
 }
+# ######################################################################################################
+
+
+# ######################################################################################################
+DO_CONJUGATE_DESCENT = function(X, Y ) { return ( DO_FMINUNC( X, Y ) ) }
 # ######################################################################################################
 
 
@@ -765,9 +813,18 @@ cat(HEADER)
     # ######################################################################################################
     # NEQ TRAINING 
     # ######################################################################################################
-    NEQ       = DO_NORMAL_EQUATIONS( X_TRAIN_SCALED, Y_TRAIN_SCALED, regularization_parameter=REGULARIZATION_STRENGTH, do_scale=FALSE )
-    METRICS   = TIMESTAMP( "NEQ" )
+    NEQ     = DO_NORMAL_EQUATIONS( X_TRAIN_SCALED, Y_TRAIN_SCALED, regularization_parameter=REGULARIZATION_STRENGTH, do_scale=FALSE )
+    METRICS = TIMESTAMP( "NEQ" )
     # ######################################################################################################
+
+
+    # ######################################################################################################
+    # FMINUNC OPTIMIZATION SEARCH
+    # ######################################################################################################
+    FMINUNC = DO_FMINUNC ( X_TRAIN_SCALED, Y_TRAIN_SCALED )
+    METRICS = TIMESTAMP( "FMINUNC" )
+    # ######################################################################################################
+
 
     # ######################################################################################################
     # SGD TRAINING 
@@ -783,11 +840,14 @@ cat(HEADER)
                                              mini_batch_size=1024,                      # size of the subsampling
                                              do_plot=TRUE,                              # plot coefficient plots and jcost
                                              imin=500 )                                 # num. iterations to wait before end criteria applied 
-    SGD = RETRIEVE_SGD_RETVALS( RETVALS, debug=TRUE )
+    SGD     = RETRIEVE_SGD_RETVALS( RETVALS, debug=TRUE )
     METRICS = TIMESTAMP( "SGD" )
     # ######################################################################################################
+
+    # ######################################################################################################
     NEQ_THETA = NEQ$theta
-    SGD_THETA = SGD$OPT_THETA ; colnames(SGD_THETA) = "THETA"
+    SGD_THETA = SGD$OPT_THETA ; colnames(SGD_THETA)   = "THETA"
+    FMU_THETA = FMINUNC$WO_GR$par; colnames(FMU_THETA) = "THETA"
     # ######################################################################################################
 
     # ######################################################################################################
@@ -823,23 +883,30 @@ cat(HEADER)
     SGD_L2  = c(T_RETVALS$SGD_L2,  C_RETVALS$SGD_L2,  P_RETVALS$SGD_L2)
     NEQ_L2  = c(T_RETVALS$NEQ_L2,  C_RETVALS$NEQ_L2,  P_RETVALS$NEQ_L2)
     # ######################################################################################################
-        cat(HEADER)
-        print( "CROSS COMPARISON SGD vs NEQ" )
-        print( sprintf( "%3d %16.6g. %16.6g", c(0:(length(SGD_THETA)-1)), SGD_THETA, NEQ_THETA ) )
-        cat(HEADER)
-        print( sprintf( "%16s %16.8g. %16.8g", paste("MSE",MODE), SGD_MSE,   NEQ_MSE))
-        cat(HEADER)
-        print( sprintf( "%16s %16.8g. %16.8g", "L2N (THETA)",     SGD_L2[1], NEQ_L2[1] ))
-        cat(HEADER)
+
+    # ######################################################################################################
+    cat( HEADER )
+    print( "THETA COEFFICIENTS, CROSS COMPARISON" )
+    cat( HEADER )
+    print ( sprintf( "THETA[%3s]= %12s %12s %12s %12s", "i", "SGD", "NEQ", "FMINUNC", "" ))
+    print ( sprintf( "THETA[%3d]= %12.8f %12.8f %12.8f %12s", c(0:(length(SGD_THETA)-1)), SGD_THETA, NEQ_THETA, FMINUNC$WO_GR$par, "" ) )
+    cat( HEADER )
+    print ( sprintf( "%12s %12.8f %12.8f %12s",  paste("MSE",MODE),   SGD_MSE,   NEQ_MSE, ""  ))
+    cat( HEADER )
+    print ( sprintf( "%12s %12.8f %12.8f %12s",  paste("L2N(THETA)"), SGD_L2[1], NEQ_L2[1], ""))
+    cat( HEADER )
     METRICS   = TIMESTAMP( "VERIFICATION" )
     # ######################################################################################################
 
     # ######################################################################################################
     # PRINT TIMESTAMP METRICS
     # ######################################################################################################
+    NEWLINE(3); cat(HEADER)
+    cat( HEADER )
     print( METRICS )
     cat(HEADER)
     # ######################################################################################################
+
 
     SGD
 
