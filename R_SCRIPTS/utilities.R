@@ -73,14 +73,14 @@ MDF_STATS = function ( Xx, debug=FALSE ) {
 
 
 # ######################################################################################################
-SUMMARY = function( X, d=3, w=120, w_str=FALSE ) {
+SUMMARY = function( X, d=3, w=120, w_str=FALSE, debug=FALSE ) {
     p_opts = options( digits=d ) 
     options( width=w ) 
     txt = summary( X )
     cat( HEADER )
     print ( txt )
     if ( w_str ) str(X )
-    cat( HEADER )
+    if ( debug ) cat( HEADER )
     options( p_opts ) 
 }
 # ######################################################################################################
@@ -536,3 +536,7 @@ CHECK_COMMAND_ARGS = function ( args, default_argname, debug=FALSE ) {
 }
 # ###################################################################################################
 
+
+# ###################################################################################################
+CONCAT = function( a ) { d = ""; for ( i in a ) d = sprintf( "%s %s", d, i ) ; d}
+# ###################################################################################################

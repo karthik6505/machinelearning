@@ -475,36 +475,6 @@ BUILD_RATINGS_MATRIX = function( RATINGS, MOVIES, M, N, INIT_VAL=NA, debug=FALSE
 
 
 # ######################################################################################################
-EXTRACT_RATINGS_SUBMATRIX = function( R, m=100, n=200, debug=TRUE  ) {
-    m = min(nrow(R), m)
-    n = min(ncol(R), n)
-    if ( m == 0 ) m = nrow(R)
-    if ( n == 0 ) n = ncol(R)
-
-
-    sampled_users  = sort(sample(1:nrow(R),m))
-    sampled_movies = sort(sample(1:ncol(R),n))
-
-    cat( HEADER )
-    print(rownames(R)[sampled_users])
-    cat( HEADER )
-    print(colnames(R)[sampled_movies])
-    cat( HEADER )
-
-    mdat = R[sampled_users, sampled_movies]
-
-    retvals = list( 'RATMAT'=mdat, 'WHICH_USERS'=sampled_users, 'WHICH_MOVIES'=sampled_movies )
-    if (debug ) { 
-        cat(HEADER)
-        str(retvals)
-        cat(HEADER)
-    }
-    return ( retvals )
-}
-# ######################################################################################################
-
-
-# ######################################################################################################
 BUILD_MOVIELENS_DATASET = function( ) {
     ratings   = read.csv( 'ml-100k/u.data', sep="\t", header=TRUE ) 
     genre     = read.csv( 'ml-100k/u.genre',sep="|",  header=TRUE, stringsAsFactors=TRUE )

@@ -83,6 +83,29 @@ IDENTIFY_TOP_MOVIE_RECOMMENDATIONS_FOR_USER = function () {
 # ###################################################################################################
 
 
+# ######################################################################################################
+EXTRACT_RATINGS_SUBMATRIX = function( OR, m=100, n=200, WO_ZERO_ENTRIES=TRUE, debug=FALSE ) {
+    m = min(nrow(OR), m)
+    n = min(ncol(OR), n)
+    if ( m == 0 ) m = nrow(OR)
+    if ( n == 0 ) n = ncol(OR)
+
+    sampled_users  = sort(sample(1:nrow(OR),m))
+    sampled_movies = sort(sample(1:ncol(OR),n))
+
+    mdat = OR[sampled_users, sampled_movies]
+
+    retvals = list( 'RATMAT'=mdat, 'WHICH_USERS'=sampled_users, 'WHICH_MOVIES'=sampled_movies )
+    if (debug ) { 
+        cat(HEADER)
+        str(retvals)
+        cat(HEADER)
+    }
+    return ( retvals )
+}
+# ######################################################################################################
+
+
 # ###################################################################################################
 GET_XY_FOR_GENRE_AS_X_AND_USER_RATING_AS_Y = function( ORIG_RATINGS, NUSERS=100, NMOVIES=200, debug=TRUE ) {
     RATINGS_RETVALS = EXTRACT_RATINGS_SUBMATRIX( ORIG_RATINGS, m=NUSERS, n=NMOVIES)
@@ -93,8 +116,13 @@ GET_XY_FOR_GENRE_AS_X_AND_USER_RATING_AS_Y = function( ORIG_RATINGS, NUSERS=100,
 
         X  = MOVIES[WHICH_MOVIES, c(1,6:ncol(M))] 
         MU = matrix(apply(M2U,1,mean,na.rm=TRUE))
-        SD = matrix(apply(M2U,1,sd,na.rm=TRUE))
+        SD = matrix(apply(M2U,1,sd,na.rm=TRUE))  
         SD = ifelse( is.na(SD), 0, SD )
+
+        if ( TRUE ) {
+            MU = MU / mean(MU,na.rm=TRUE)
+            SD = SD / mean(SD,na.rm=TRUE)
+        }
 
         # ###########################################################################
         # BOOTSTRAP the FIRST generation of the PREDICTIVE FEATURES (i.e., GENREs) as 
@@ -110,6 +138,8 @@ GET_XY_FOR_GENRE_AS_X_AND_USER_RATING_AS_Y = function( ORIG_RATINGS, NUSERS=100,
         # colnames(NX) = c( "movie_id", "rating_mean", "rating_dev", colnames(MOVIES[c(6:ncol(M))]))
         colnames(NX) = c( "rating_mean", "rating_dev", colnames(MOVIES[c(6:ncol(M))]))
         rownames(NX) = rownames(M2U)
+
+        # NX = NX[,3:ncol(NX)]
 
     retvals = list ( 'X'=NX, 'Y'=Y, 'WHICH_USERS'=WHICH_USERS, 'WHICH_MOVIES'=WHICH_MOVIES )
     if ( debug ) str(retvals)
@@ -271,7 +301,6 @@ DO_ITERATIVE_CONVERGENCE_FOR_RECOMMENDATION_PARAMETERS = function( ORIG_RATINGS,
     WHICH_USERS  <<- GENRE_RETVALS$WHICH_USERS
     WHICH_MOVIES <<- GENRE_RETVALS$WHICH_MOVIES
 
-    #X_GEN = scale( X_GEN, center=TRUE, scale=FALSE)
     X_GEN = scale( X_GEN, center=FALSE, scale=FALSE)
     Y_M2U = scale( Y_M2U, center=TRUE,  scale=FALSE)
 
@@ -286,13 +315,13 @@ DO_ITERATIVE_CONVERGENCE_FOR_RECOMMENDATION_PARAMETERS = function( ORIG_RATINGS,
 
     # ###################################################################################################
     NEWLINE(3); cat( HEADER )
-    PREFERENCES = GET_XY_FOR_USER_PREFERENCES_FOR_GENRE_MATRIX( X_GEN, Y_M2U, regparam=REGPARAM, debug=debug)
+    PREFERENCES2 = GET_XY_FOR_USER_PREFERENCES_FOR_GENRE_MATRIX( X_GEN, Y_M2U, regparam=REGPARAM, debug=debug)
     # ###################################################################################################
 
     # ###################################################################################################
     NEWLINE(3); cat( HEADER )
     Y_U2M = t(Y_M2U)
-    MOVIEGEN_FEATURES = GET_XY_FOR_PREFERENCES_AS_X_AND_USER_RATING_AS_Y( PREFERENCES, Y_U2M )
+    MOVIEGEN_FEATURES2 = GET_XY_FOR_PREFERENCES_AS_X_AND_USER_RATING_AS_Y( PREFERENCES2, Y_U2M )
     # ###################################################################################################
 
     # ###################################################################################################
@@ -307,15 +336,9 @@ DO_ITERATIVE_CONVERGENCE_FOR_RECOMMENDATION_PARAMETERS = function( ORIG_RATINGS,
     # THIS IMPLEMENTS ITERATIVE CONVERGENCE WHICH IS A LOT SLOWER THAN TO DO IT ALL AT ONCE BUT ALLOWS
     # ACCESS TO EACH ITERATION OF THE CONVERGENCE TO PLOT THINGS SUCH AS COEFFICIENT TRAVERSAL AND STABILITY
     # ###################################################################################################
-    for( i in 1:N_ITER ) {
-        if ( i == 1 ) {
-            PREFERENCES1       = PREFERENCES
-            MOVIEGEN_FEATURES1 = MOVIEGEN_FEATURES
-        } 
-        if ( i != 1) {
+    for( iter in 2:N_ITER ) {
         PREFERENCES1       = GET_XY_FOR_USER_PREFERENCES_FOR_GENRE_MATRIX( MOVIEGEN_FEATURES2, Y_M2U, regparam=REGPARAM, debug=FALSE )
         MOVIEGEN_FEATURES1 = GET_XY_FOR_PREFERENCES_AS_X_AND_USER_RATING_AS_Y( PREFERENCES2,   Y_U2M )
-        }
 
         PREFERENCES2       = GET_XY_FOR_USER_PREFERENCES_FOR_GENRE_MATRIX( MOVIEGEN_FEATURES1, Y_M2U, regparam=REGPARAM, debug=FALSE )
         MOVIEGEN_FEATURES2 = GET_XY_FOR_PREFERENCES_AS_X_AND_USER_RATING_AS_Y( PREFERENCES1,   Y_U2M )
@@ -327,14 +350,14 @@ DO_ITERATIVE_CONVERGENCE_FOR_RECOMMENDATION_PARAMETERS = function( ORIG_RATINGS,
         M_MSE = DO_ANALYSIS_DIFFERENCES_BETWEEN_COEFFICIENTS( MOVIEGEN_FEATURES2, MOVIEGEN_FEATURES1, ptitle="MOVIEGEN_DIFF" )
 
         MSE = rbind( MSE, data.frame( "GEN"=i, "P_MSE"=P_MSE, "M_MSE"=M_MSE ))
-        print( sprintf( "ITERATION=%4d MSE(COEFF_DIFF BETWEEN GEN) P=%16.8g M=%16.8g", i, P_MSE, M_MSE ) )
+        print( sprintf( "ITERATION=%4d MSE(COEFF_DIFF BETWEEN GEN) P=%16.8g M=%16.8g", iter, P_MSE, M_MSE ) )
 
         idx = c(1:nrow(MSE))
         if ( nrow(MSE) > 3 ) idx = c( (nrow(MSE)-3) : nrow(MSE))
         MEAN_P_MSE = mean(MSE$P_MSE[idx])
         MEAN_M_MSE = mean(MSE$M_MSE[idx])
 
-        METRICS <<- TIMESTAMP( paste( "CONVERGENCE_ITERATION", i ) )
+        METRICS <<- TIMESTAMP( paste( "CONVERGENCE_ITERATION", iter ) )
 
         if ( P_MSE<EPSILON  & M_MSE<EPSILON ) {                 
             cat(HEADER)
@@ -363,31 +386,106 @@ DO_ITERATIVE_CONVERGENCE_FOR_RECOMMENDATION_PARAMETERS = function( ORIG_RATINGS,
 
 
 # ###################################################################################################
+GENERATE_LOW_RANK = function( USER_PREFERENCES, MOVIE_FEATURES, NA_RM=TRUE ) {
+    if ( NA_RM ) {
+        NA_MOVIES = c()
+        for ( MOVIE in rownames(MOVIE_FEATURES) ) {
+            mfv = MOVIE_FEATURES[MOVIE,]
+            if ( all(is.na(mfv)) ) NA_MOVIES = append( NA_MOVIES, MOVIE ) 
+        }
+        MOVIE_FEATURES[NA_MOVIES,] = 0
+        SUMMARY( NA_MOVIES )
+    
+        NA_MOVIES = c()
+        for ( MOVIE in rownames(MOVIE_FEATURES) ) {
+            mfv = MOVIE_FEATURES[MOVIE,]
+            if ( any(is.na(mfv)) ) NA_MOVIES = append( NA_MOVIES, MOVIE ) 
+        }
+        # SUMMARY( NA_MOVIES )
+    }
+    NORMALIZED_PREDICTIONS = USER_PREFERENCES %*% t(MOVIE_FEATURES)
+}
+# ###################################################################################################
+
+
+# ###################################################################################################
 # COLLABORATIVELY-FILTERED RATING GENERATION FOR USERS RATINGS AND MOVIE RATING-PREDICTIVE FEATURES
 # ###################################################################################################
 GENERATE_COLLABORATIVE_FILTERED_RATINGS = function( WHICH_RATINGS, USER_PREFERENCES, MOVIE_FEATURES, USER_MEAN_NORMALIZATIONS, sample_n=200, debug=TRUE ) {
 
-    NORMALIZED_PREDICTIONS = USER_PREFERENCES %*% t(MOVIE_FEATURES)
+    NORMALIZED_PREDICTIONS = GENERATE_LOW_RANK( USER_PREFERENCES, MOVIE_FEATURES )
 
-    PREDICTED_U2M_RATINGS  = apply( NORMALIZED_PREDICTIONS, 2, DENORMALIZE_MEAN_NORMALIZED_PREDICTIONS, USER_MEANS=USER_MEAN_NORMALIZATIONS)
+    RECOMMENDATIONS_FOR_U2M_RATINGS  = apply( NORMALIZED_PREDICTIONS, 2, DENORMALIZE_MEAN_NORMALIZED_PREDICTIONS, 
+                                                                         USER_MEANS=USER_MEAN_NORMALIZATIONS, 
+                                                                         PRODUCTION_SYSTEM_CORRECTION=TRUE )
 
-    idxs = sample( 1:nrow(WHICH_RATINGS), min(sample_n,nrow(WHICH_RATINGS)))
-    if ( sample_n == 0 ) idxs = 1:nrow(WHICH_RATINGS)
+    colnames(RECOMMENDATIONS_FOR_U2M_RATINGS) = colnames(WHICH_RATINGS)
+    rownames(RECOMMENDATIONS_FOR_U2M_RATINGS) = rownames(WHICH_RATINGS)
 
-    for ( MOVIE in 1:nrow(USER_TO_MOVIE_RATINGS)) {
-        SUMMARY(PREDICTED_U2M_RATINGS[,MOVIE])
+    if ( sample_n == 0 ) sample_n = nrow(WHICH_RATINGS)
+
+    r_idxs = sample( rownames(WHICH_RATINGS), min(sample_n, nrow(WHICH_RATINGS)) )
+
+    MSE = c()
+    for ( MOVIE in colnames(USER_TO_MOVIE_RATINGS)) {
+        u_idxs = names(which( !is.na(WHICH_RATINGS[,MOVIE]) ))
+
+        print( sprintf( "%s : [%4d w/ selected ratings] : %s ", MOVIE, length(u_idxs), as.character(M[substr(MOVIE,2,10),"movie_title"]) )) 
+
+        SUMMARY(RECOMMENDATIONS_FOR_U2M_RATINGS[,MOVIE])
+
         SUMMARY(WHICH_RATINGS[,MOVIE])
-        print( sprintf( "%s[%.1f:%s]", rownames(WHICH_RATINGS)[idxs],
-                                       round(PREDICTED_U2M_RATINGS[idxs,MOVIE],1), 
-                                       WHICH_RATINGS[idxs,MOVIE]))
+
+        SAMPLED_RECM = sprintf("%s[%.0f:%s]", r_idxs, 
+                                     RECOMMENDATIONS_FOR_U2M_RATINGS[r_idxs, MOVIE], WHICH_RATINGS[r_idxs, MOVIE])
+
+        SAMPLED_FITS = sprintf("%s[%.1f:%s]", u_idxs, 
+                                     RECOMMENDATIONS_FOR_U2M_RATINGS[u_idxs, MOVIE], WHICH_RATINGS[u_idxs, MOVIE])
+
+        FIT_MSE = NA
+        if ( length(u_idxs) ) FIT_MSE = sum(RECOMMENDATIONS_FOR_U2M_RATINGS[u_idxs,MOVIE] - WHICH_RATINGS[u_idxs,MOVIE])^2 / length(u_idxs)
+        MSE = append( MSE, FIT_MSE )
+
+        cat(SUBHEADER)
+        print( paste( "SAMPLE RECOMMENDATIONS  : ", CONCAT(SAMPLED_RECM) ))
+        print( paste( "AVAILABLE USER FITS     : ", CONCAT(SAMPLED_FITS) ))
+        print( paste( "MSE (WRT GIVEN MOVIE)   :  ", round(FIT_MSE,6) ))
         cat(HEADER)
-        cat(HEADER)
+
+        NEWLINE(1)
     }
 
-    return (PREDICTED_U2M_RATINGS)
+    cat(HEADER)
+    try( print(sprintf(" AVG(PER-MOVIE MSE) = %.6f", mean(MSE, na.rm=TRUE))))
+    try( print(sprintf(" SD (PER-MOVIE MSE) = %.6f", sd(MSE,   na.rm=TRUE))))
+    cat(HEADER)
+
+    return (RECOMMENDATIONS_FOR_U2M_RATINGS)
 }
 # ###################################################################################################
 
+
+# ###################################################################################################
+# NUMBER OF STARS MAY ACTUALLY BE SLIGHTLY LARGER THAN FIVE
+# ###################################################################################################
+DENORMALIZE_MEAN_NORMALIZED_PREDICTIONS = function( USERS_WRT_MOVIE_PRED, USER_MEANS=c(), 
+                                                   PRODUCTION_SYSTEM_CORRECTION=TRUE, TOP_RATING=5, LOW_RATING=0, debug=FALSE ) {
+
+    NUMBER_STARS_PREDICTED_RATING = USERS_WRT_MOVIE_PRED + USER_MEANS
+
+    # a 0:5 correction may be used here as values will be in range -0:5+some-extra
+    if ( PRODUCTION_SYSTEM_CORRECTION ) {
+        NUMBER_STARS_PREDICTED_RATING = apply( NUMBER_STARS_PREDICTED_RATING, 2, function(x) x = ifelse(x>TOP_RATING, TOP_RATING, x))
+        NUMBER_STARS_PREDICTED_RATING = apply( NUMBER_STARS_PREDICTED_RATING, 2, function(x) x = ifelse(x<LOW_RATING, LOW_RATING, x))
+        NUMBER_STARS_PREDICTED_RATING = round( NUMBER_STARS_PREDICTED_RATING )
+    }
+
+    if ( debug )
+        SUMMARY( NUMBER_STARS_PREDICTED_RATING ) #, w_str=TRUE ) 
+
+    return( NUMBER_STARS_PREDICTED_RATING ) 
+}
+# ###################################################################################################
 
 
 
@@ -437,10 +535,10 @@ NEWLINE(10)
     # ###################################################################################################
     # GLOBALS PARAMETERS
     # ###################################################################################################
-    N_USERS_TO_USE  = 800 
-    N_MOVIES_TO_USE = 1200 
+    N_USERS_TO_USE  = as.integer(1000 * 0.6)
+    N_MOVIES_TO_USE = as.integer(1800 * 0.8)
         EPSILON      = 1E-1
-        REGPARAM     = 1E-1
+        REGPARAM     = 3E-1
         N_ITER       = 50
         DO_PDF       = TRUE
         DROP_TRIGGER = 1
@@ -487,27 +585,20 @@ NEWLINE(10)
         MOVIE_TO_USER_RATINGS  =   ITER_RETVALS$'Y_M2U'
         USER_TO_MOVIE_RATINGS  = t(ITER_RETVALS$'Y_M2U')
         CONVERGENCE            =   ITER_RETVALS$'WHY'
-        USER_MEAN_NORMALIZATIONS  =   as.matrix(attr(USER_TO_MOVIE_RATINGS, "scaled:center"))
-        MOVIE_MEAN_NORMALIZATIONS =   as.matrix(attr(MOVIE_TO_USER_RATINGS, "scaled:center"))
-    # ###################################################################################################
+        if (!is.null(attr(USER_TO_MOVIE_RATINGS,"scaled:center"))) USER_MEAN_NORMALIZATIONS  =   as.matrix(attr(USER_TO_MOVIE_RATINGS, "scaled:center"))
+        if  (is.null(attr(USER_TO_MOVIE_RATINGS,"scaled:center"))) USER_MEAN_NORMALIZATIONS  =      rep(0, nrow(USER_TO_MOVIE_RATINGS))
 
-    # ###################################################################################################
-    # NUMBER OF STARS MAY ACTUALLY BE SLIGHTLY LARGER THAN FIVE
-    # ###################################################################################################
-    DENORMALIZE_MEAN_NORMALIZED_PREDICTIONS = function( USERS_WRT_MOVIE_PRED, USER_MEANS=c() ) {
-        NUMBER_STARS_PREDICTED_RATING = USERS_WRT_MOVIE_PRED + USER_MEANS
-        SUMMARY( NUMBER_STARS_PREDICTED_RATING , w_str=TRUE ) 
-        return( NUMBER_STARS_PREDICTED_RATING ) 
-    }
+        if (!is.null(attr(MOVIE_TO_USER_RATINGS,"scaled:center"))) MOVIE_MEAN_NORMALIZATIONS =   as.matrix(attr(MOVIE_TO_USER_RATINGS, "scaled:center"))
+        if  (is.null(attr(MOVIE_TO_USER_RATINGS,"scaled:center"))) MOVIE_MEAN_NORMALIZATIONS =      rep(0, nrow(MOVIE_TO_USER_RATINGS))
     # ###################################################################################################
 
     # ###################################################################################################
     WHICH_RATINGS = ORIG_RATINGS[WHICH_USERS,WHICH_MOVIES]
-    PREDICTED_U2M_RATINGS = GENERATE_COLLABORATIVE_FILTERED_RATINGS( WHICH_RATINGS, 
+    RECOMMENDATIONS_FOR_U2M_RATINGS = GENERATE_COLLABORATIVE_FILTERED_RATINGS( WHICH_RATINGS, 
                                                                      USER_PREFERENCES, 
                                                                      MOVIE_FEATURES, 
                                                                      USER_MEAN_NORMALIZATIONS, 
-                                                                     sample_n=100, debug=TRUE )
+                                                                     sample_n=7, debug=TRUE )
     # ###################################################################################################
     
 
