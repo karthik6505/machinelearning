@@ -32,6 +32,7 @@ message("")
 # ###############################################################################
 source( 'utilities.R' )
 source( 'plot_functions.R' )
+source( 'datasets.R' )
 # ###############################################################################
 
 
@@ -160,7 +161,7 @@ DO_REGRESSION_DIAGNOSTICS = function( X_TEST_SCALED, Y_TEST_SCALED, SGD_Y_TEST, 
     # ######################################################################################################
 
     # ######################################################################################################
-    # fixme: put eval parse with theta and the columsn of x
+    # FIXME: put eval parse with theta and the columsn of x
     # ######################################################################################################
     XY_TEST = EXTEND_DF( as.data.frame(X_TEST_SCALED), as.data.frame(Y_TEST_SCALED), colname="Y")
 
@@ -183,6 +184,43 @@ DO_REGRESSION_DIAGNOSTICS = function( X_TEST_SCALED, Y_TEST_SCALED, SGD_Y_TEST, 
     return ( retvals )
 }
 # ######################################################################################################
+
+
+# ######################################################################################################
+DO_LINEAR_REGRESSION_VIA = function( Xvar, Yvar, METHOD="lm" ) {
+}
+# ######################################################################################################
+
+# ######################################################################################################
+# www.stats.ox.ac.uk/~burke/Linear%20Models/Linear%20Models%20Notes.pdf
+# ######################################################################################################
+ASSUMPTIONS_TXT = "
+The following assumptions must be satisfied for Ordinary Least Squares
+Regression:
+1 Model is linear in parameters
+2 The data are a random sample of the population
+i.e. The errors are statistically independent from one another
+3 The expected value of the errors is always zero
+4 The independent variables are not too strongly collinear
+5 The independent variables are measured precisely
+6 The residuals have constant variance
+7 The errors are Normally distributed
+"
+VERIFY_LINEAR_MODEL_ASSUMPTIONS = function( Xvar, Yvar, METHOD="lm" ) {
+    print( ASSUMPTIONS_TXT )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+# ######################################################################################################
+H = BUILD_NYHOUSING_DATASET( DO_FSELECTION=FALSE, DO_FEATURE_EXPLORATION=FALSE, do_log=TRUE, PREDICT_VAR=10 )
+    X = H$X
+    Y = H$Y
+
+
+# ######################################################################################################
+
 
 
 

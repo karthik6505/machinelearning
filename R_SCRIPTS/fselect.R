@@ -87,12 +87,6 @@ message("")
 
 
 # #####################################################################################
-DOUBLECHECK = FALSE
-APPLY_EXTRA_METHODS = FALSE
-# #####################################################################################
-
-
-# #####################################################################################
 library(rpart)
 library(mlbench)
 library(FSelector)
@@ -102,6 +96,19 @@ library(FSelector)
 # #####################################################################################
 source( 'utilities.R' )
 # #####################################################################################
+
+
+# #####################################################################################
+DOUBLECHECK = FALSE
+APPLY_EXTRA_METHODS = FALSE
+# #####################################################################################
+TEST_ENABLED = TRUE
+# #####################################################################################
+    V = CHECK_COMMAND_ARGS( commandArgs(), "TEST_ENABLED" )
+    if ( V$'VALID'==TRUE & V$'FOUND'==TRUE ) 
+        TEST_ENABLED = V$'ARGVAL'
+# #####################################################################################
+
 
 
 # #####################################################################################
@@ -427,7 +434,21 @@ SAMPLE = function( x, n=100 ) {
 
 # #####################################################################################
 # #####################################################################################
-DO_PCA = function( x, k=0, vargoal=0.995, ntries=5, nmax=0, do_scale=TRUE, optimal=TRUE, silent=FALSE ) {
+DO_PCA_PLOT = function( xX, ... ) {
+    PCA = DO_PCA( xX )
+    Z   = PCA$Z
+    txt = rownames(xX)
+    plot( Z[,1], Z[,2], pch="+", cex=0.8, ... )
+    text( Z[,1], Z[,2], txt, cex=0.8 )
+    return ( PCA )
+}
+# #####################################################################################
+
+
+
+# #####################################################################################
+# #####################################################################################
+DO_PCA = function( x, k=0, vargoal=0.995, ntries=5, nmax=0, do_scale=TRUE, optimal=TRUE, silent=FALSE, debug=TRUE ) {
     if ( class(x) != "data.frame" ) {
         x = data.frame(x) 
         rownames(x) = 1:nrow(x)
@@ -475,7 +496,7 @@ DO_PCA = function( x, k=0, vargoal=0.995, ntries=5, nmax=0, do_scale=TRUE, optim
                     "std_k"=sd(k_opt), 
                     "q"=quantile(k_opt, c(0.75)), 
                     "max_k"=max(k_opt))
-    print ( pca_best_k )
+    if ( debug ) print ( pca_best_k )
 
     xp = matrix(apply(x,2,as.numeric), nrow(x))
     START = TRUE
@@ -506,7 +527,6 @@ DO_PCA = function( x, k=0, vargoal=0.995, ntries=5, nmax=0, do_scale=TRUE, optim
 
 
 
-TEST_ENABLED = FALSE 
 if ( TEST_ENABLED ) {
     # #####################################################################################
     GET_TIMESTAMP( "START" )
@@ -522,15 +542,12 @@ if ( TEST_ENABLED ) {
     NEWLINE(20)
     data(BostonHousing) # mydf=BostonHousing[-4] # only numeric variables
     #####################################################################################
-    # F10 = DO_RANK_CORRELATION_SUBSET_SELECTION(   mydf, dfname="BostonHousing, C:N", top=3, target_var="medv", nmax=256, cmax=0.7 )
-    # F11 = DO_LINEAR_CORRELATION_SUBSET_SELECTION( mydf, dfname="BostonHousing, C:N", top=3, target_var="medv", nmax=256, cmax=0.7 )
-    #####################################################################################
-    F10 = DO_GENERAL_SUBSET_SELECTION( BostonHousing[-4], dfname="BostonHousing, C:N",
+    F10 = DO_GENERAL_SUBSET_SELECTION( BostonHousing[-4], dfname="BostonHousing, R:N",
                                         using_approach=rank.correlation, approach_ppname="rank.correlation", 
                                         rtypes="SUBSAMPLE|COMPLETECASES|CORRELATION",
                                         target_var="medv", top=10, nmax=256, cmax=0.8 )
     # #####################################################################################
-    F11 = DO_GENERAL_SUBSET_SELECTION( BostonHousing[-4], dfname="BostonHousing, C:N",
+    F11 = DO_GENERAL_SUBSET_SELECTION( BostonHousing[-4], dfname="BostonHousing, R:N",
                                         using_approach=linear.correlation, approach_ppname="linear.correlation", 
                                         rtypes="SUBSAMPLE|COMPLETECASES|CORRELATION",
                                         target_var="medv", top=10, nmax=256, cmax=0.8 )
@@ -542,8 +559,6 @@ if ( TEST_ENABLED ) {
     # #####################################################################################
     NEWLINE(20)
     data(HouseVotes84)
-    # #####################################################################################
-    # F20 = DO_CHI_SQUARED_SUBSET_SELECTION( mydf, dfname="HouseVotes84, C:F", top=10, target_var="Class", nmax=256, cmax=0.7 )
     # #####################################################################################
     F20 = DO_GENERAL_SUBSET_SELECTION( HouseVotes84, dfname="HouseVotes84, C:F",
                                         using_approach=chi.squared, approach_ppname="chi.squared", 

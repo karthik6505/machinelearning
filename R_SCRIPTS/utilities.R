@@ -29,6 +29,11 @@ message("")
 # ######################################################################################################
 
 
+# ######################################################################################################
+print( commandArgs() )
+# ######################################################################################################
+
+
 # #####################################################################################
 library(stringr)
 # #####################################################################################
@@ -63,6 +68,20 @@ MDF_STATS = function ( Xx, debug=FALSE ) {
     print ( sprintf( "DF STATS: %sx%s [%s w/ %s elems]", nrow(Xx), ncol(Xx), class(Xx), length(Xx) ) ) 
     if ( debug ) print ( paste( 1:ncol(Xx), colnames(Xx) ) )
     NEWLINE(1)
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+SUMMARY = function( X, d=3, w=120, w_str=FALSE ) {
+    p_opts = options( digits=d ) 
+    options( width=w ) 
+    txt = summary( X )
+    cat( HEADER )
+    print ( txt )
+    if ( w_str ) str(X )
+    cat( HEADER )
+    options( p_opts ) 
 }
 # ######################################################################################################
 
@@ -498,5 +517,22 @@ VERIFY = function( what, xX, debug=FALSE ) {
 
 
 # ###################################################################################################
+CHECK_COMMAND_ARGS = function ( args, default_argname, debug=FALSE ) {
+    FOUND = FALSE
+    VALID = FALSE
+    argval = NA
+    if (default_argname %in% names(args))  {
+        argval=args[[default_argname]]
+        FOUND = TRUE
+        VALID = TRUE
+    }
+    retvals = list( 'ARGNAME'=default_argname, 'VALID'=VALID, 'FOUND'=FOUND, 'ARGVAL'=argval )
+    if ( debug ) {
+        cat(HEADER)
+        print( t(as.matrix(retvals) ))
+        cat(HEADER)
+    }
+    return (retvals)
+}
 # ###################################################################################################
 

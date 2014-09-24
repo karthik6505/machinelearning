@@ -30,6 +30,10 @@ message("")
 
 
 # ######################################################################################################
+# ######################################################################################################
+
+
+# ######################################################################################################
 DO_FEATURE_SET_SUBSELECTION = function( XY, dfname="R:N", cmax=0.9, topn=10, nmax=nrow(X), from_quantile=0.5, refine=TRUE, debug=FALSE, key="T" ) {
     new_colnames = c(1:(ncol(XY)-1)) + 1000
     old_colnames = paste( key, new_colnames, sep="" )
@@ -300,6 +304,226 @@ BUILD_SYNTHETIC_DATASET = function( DO_FSELECTION=FALSE, DO_FEATURE_EXPLORATION=
 
     retvals = list( 'X'=X, 'Y'=Y, 'MAPPING'=FINAL_MAPPING, 'SELECTED_FEATURES'=SELECTED_FEATURES, 'DO_FS'=FEATURE_SELECTION, 'DO_FE'=DO_FEATURE_EXPLORATION )
     return ( retvals )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+# > housing = read.table( "http://www.jaredlander.com/data/housing.csv", sep=",", header=TRUE, stringsAsFactors=FALSE )
+# > summary( housing )
+#                   Neighborhood    Building.Classification  Total.Units     
+#  FLUSHING-NORTH         : 133   R2-CONDOMINIUM: 441       Min.   :   1.00  
+#  UPPER EAST SIDE (59-79): 123   R4-CONDOMINIUM:1883       1st Qu.:  15.00  
+#  HARLEM-CENTRAL         :  94   R9-CONDOMINIUM: 237       Median :  30.00  
+#  CHELSEA                :  88   RR-CONDOMINIUM:  65       Mean   :  70.18  
+#  UPPER WEST SIDE (59-79):  87                             3rd Qu.:  75.00  
+#  UPPER EAST SIDE (79-96):  78                             Max.   :3378.00  
+#  (Other)                :2023                                              
+#    Year.Built     Gross.SqFt      Estimated.Gross.Income Gross.Income.per.SqFt
+#  Min.   :1825   Min.   :    478   Min.   :    6424       Min.   : 3.57        
+#  1st Qu.:1926   1st Qu.:  18704   1st Qu.:  405180       1st Qu.:18.79        
+#  Median :1986   Median :  38456   Median :  943901       Median :25.00        
+#  Mean   :1967   Mean   :  82763   Mean   : 2640882       Mean   :27.57        
+#  3rd Qu.:2005   3rd Qu.:  90626   3rd Qu.: 2725550       3rd Qu.:36.82        
+#  Max.   :2010   Max.   :3364977   Max.   :56010967       Max.   :62.80        
+#  NA's   :96                                                                   
+#  Estimated.Expense  Expense.per.SqFt Net.Operating.Income Full.Market.Value  
+#  Min.   :    1740   Min.   : 0.97    Min.   :    4684     Min.   :    30000  
+#  1st Qu.:  155515   1st Qu.: 7.64    1st Qu.:  239700     1st Qu.:  1677750  
+#  Median :  350264   Median : 9.18    Median :  581522     Median :  4026500  
+#  Mean   :  840916   Mean   : 9.40    Mean   : 1799966     Mean   : 12977808  
+#  3rd Qu.:  899084   3rd Qu.:11.05    3rd Qu.: 1805149     3rd Qu.: 13136752  
+#  Max.   :21771401   Max.   :18.21    Max.   :40144686     Max.   :295182007  
+#                                                                              
+#  Market.Value.per.SqFt            Boro     
+#  Min.   : 10.66        Bronx        :  69  
+#  1st Qu.: 74.63        Brooklyn     : 717  
+#  Median :112.22        Manhattan    :1380  
+#  Mean   :131.19        Queens       : 434  
+#  3rd Qu.:187.49        Staten Island:  26  
+#  Max.   :399.38                    
+# ######################################################################################################
+BUILD_NYHOUSING_DATASET = function( DO_FSELECTION=FALSE, DO_FEATURE_EXPLORATION=FALSE, do_log=TRUE, PREDICT_VAR=10 ) {
+    housing = read.table( "housing.csv", sep=",", stringsAsFactors=TRUE, header=TRUE )
+    X = housing[-PREDICT_VAR]
+    Y = housing[PREDICT_VAR]
+    retvals = list( 'X'=X, 'Y'=Y )
+    return ( retvals )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+# The Jester Dataset (save to disk, then unzip to obtain Excel files):
+# 
+# jester-data-1.zip : (3.9MB) Data from 24,983 users who have rated 36 or more jokes, a matrix with dimensions 24983 X 101.
+# jester-data-2.zip : (3.6MB) Data from 23,500 users who have rated 36 or more jokes, a matrix with dimensions 23500 X 101.
+# jester-data-3.zip : (2.1MB) Data from 24,938 users who have rated between 15 and 35 jokes, a matrix with dimensions 24,938 X 101.
+# Format:
+# 
+# 3 Data files contain anonymous ratings data from 73,421 users.
+# Data files are in .zip format, when unzipped, they are in Excel (.xls) format
+# Ratings are real values ranging from -10.00 to +10.00 (the value "99" corresponds to "null" = "not rated").
+# One row per user
+# The first column gives the number of jokes rated by that user. 
+# The next 100 columns give the ratings for jokes 01 - 100.
+# The sub-matrix including only columns {5, 7, 8, 13, 15, 16, 17, 18, 19, 20} is dense. 
+# Almost all users have rated those jokes (see discussion of "universal queries" in the above paper).
+# ######################################################################################################
+BUILD_JESTER_DATASET = function( which_one=1 ) {
+    jester = read.table( sprintf('jester-data-%s.csv', which_one), sep=",", header=FALSE )
+    NCOL = ncol(jester)
+    NROW = nrow(jester)
+    colnames(jester) = c( 'NR', paste ('R', c(1:100), sep="" ) )
+    J  = as.matrix( jester )
+
+    NUM_RATINGS  = J[,1]
+    JOKE_RATINGS = J[,2:NCOL]
+
+    NCOL = NCOL-1
+
+    UID = c(1:NROW)
+    USER_RATING_AVG = apply( J, 1, mean )
+    USER_RATING_SD  = apply( J, 1, sd )
+
+    J = cbind( 'UID'=UID, 'NR'=NUM_RATINGS, 'AVG'=USER_RATING_AVG, 'SD'=USER_RATING_SD, J )
+    RETVALS = list( 'J'=J, 'UID'=1, 'NR'=2, 'AVG'=3, 'SD'=4, 'RATINGS'=c(5:104) )
+    return ( RETVALS )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+# Herlocker, J., Konstan, J., Borchers, A., Riedl, J.. An Algorithmic
+# Framework for Performing Collaborative Filtering. Proceedings of the
+# 1999 Conference on Research and Development in Information
+# Retrieval. Aug. 1999.
+# 
+# GroupLens Research currently operates a movie recommender based on
+# collaborative filtering:
+# 
+#         http://www.movielens.org/
+# 
+# DETAILED DESCRIPTIONS OF DATA FILES
+# ==============================================
+# 
+# Here are brief descriptions of the data.
+# 
+# ml-data.tar.gz   -- Compressed tar file.  To rebuild the u data files do this:
+#                 gunzip ml-data.tar.gz
+#                 tar xvf ml-data.tar
+#                 mku.sh
+# 
+# u.data     -- The full u data set, 100000 ratings by 943 users on 1682 items.
+#               Each user has rated at least 20 movies.  Users and items are
+#               numbered consecutively from 1.  The data is randomly
+#               ordered. This is a tab separated list of 
+# 	         user id | item id | rating | timestamp. 
+#               The time stamps are unix seconds since 1/1/1970 UTC   
+# 
+# u.info     -- The number of users, items, and ratings in the u data set.
+# 
+# u.item     -- Information about the items (movies); this is a tab separated
+#               list of
+#               movie id | movie title | release date | video release date |
+#               IMDb URL | unknown | Action | Adventure | Animation |
+#               Children's | Comedy | Crime | Documentary | Drama | Fantasy |
+#               Film-Noir | Horror | Musical | Mystery | Romance | Sci-Fi |
+#               Thriller | War | Western |
+#               The last 19 fields are the genres, a 1 indicates the movie
+#               is of that genre, a 0 indicates it is not; movies can be in
+#               several genres at once.
+#               The movie ids are the ones used in the u.data data set.
+# 
+# u.genre    -- A list of the genres.
+# 
+# u.user     -- Demographic information about the users; this is a tab
+#               separated list of
+#               user id | age | gender | occupation | zip code
+#               The user ids are the ones used in the u.data data set
+# ######################################################################################################
+#     user_id         item_id           rating       timestamp        
+#  Min.   :  1.0   Min.   :   1.0   Min.   :1.00   Min.   :874724710  
+#  1st Qu.:254.0   1st Qu.: 175.0   1st Qu.:3.00   1st Qu.:879448710  
+#  Median :447.0   Median : 322.0   Median :4.00   Median :882826944  
+#  Mean   :462.5   Mean   : 425.5   Mean   :3.53   Mean   :883528851  
+#  3rd Qu.:682.0   3rd Qu.: 631.0   3rd Qu.:4.00   3rd Qu.:888259984  
+#  Max.   :943.0   Max.   :1682.0   Max.   :5.00   Max.   :893286638  
+# 
+# ######################################################################################################
+BUILD_RATINGS_MATRIX = function( RATINGS, MOVIES, M, N, INIT_VAL=NA, debug=FALSE ) {
+    print( sprintf( "BUILDING CROSS REFERENCE MATRIX [%dx%d]", M, N ) )
+
+    mdat <- matrix(rep(INIT_VAL, M*N), nrow = M )
+    for( i in 1:nrow(RATINGS) ) {
+        uid = RATINGS[i,1]
+        mid = RATINGS[i,2]
+        mr  = RATINGS[i,3]
+        t   = RATINGS[i,4]
+        mdat[ uid, mid ] = as.numeric(mr)
+    }
+    if ( debug ) str(mdat)
+
+    MDAT = as.data.frame( mdat ) 
+    rownames(MDAT) = paste("U",c(1:nrow(MDAT)),sep="")
+    colnames(MDAT) = paste("M",c(1:ncol(MDAT)),sep="")
+    MDAT = as.matrix( MDAT )
+
+    return ( MDAT )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+EXTRACT_RATINGS_SUBMATRIX = function( R, m=100, n=200, debug=TRUE  ) {
+    m = min(nrow(R), m)
+    n = min(ncol(R), n)
+    if ( m == 0 ) m = nrow(R)
+    if ( n == 0 ) n = ncol(R)
+
+
+    sampled_users  = sort(sample(1:nrow(R),m))
+    sampled_movies = sort(sample(1:ncol(R),n))
+
+    cat( HEADER )
+    print(rownames(R)[sampled_users])
+    cat( HEADER )
+    print(colnames(R)[sampled_movies])
+    cat( HEADER )
+
+    mdat = R[sampled_users, sampled_movies]
+
+    retvals = list( 'RATMAT'=mdat, 'WHICH_USERS'=sampled_users, 'WHICH_MOVIES'=sampled_movies )
+    if (debug ) { 
+        cat(HEADER)
+        str(retvals)
+        cat(HEADER)
+    }
+    return ( retvals )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+BUILD_MOVIELENS_DATASET = function( ) {
+    ratings   = read.csv( 'ml-100k/u.data', sep="\t", header=TRUE ) 
+    genre     = read.csv( 'ml-100k/u.genre',sep="|",  header=TRUE, stringsAsFactors=TRUE )
+    info      = read.csv( 'ml-100k/u.info', sep=" ",  header=TRUE )
+    movies    = read.csv( 'ml-100k/u.item', sep="|",  header=TRUE )
+    occupation= read.csv( 'ml-100k/u.occupation', sep=" ",  header=TRUE )
+    users     = read.csv( 'ml-100k/u.user', sep="|",  header=TRUE )
+    N_USERS   = nrow(users)
+    N_MOVIES  = nrow(movies)
+    N_GENRE   = nrow(genre)
+    user_movies = BUILD_RATINGS_MATRIX( ratings, movies, N_USERS, N_MOVIES, INIT_VAL=NA )
+    retvals  = list( 'ratings'=ratings,
+                     'movies' =movies,
+                     'users'  =users,
+                     'genre'  =genre,
+                     'counts' =info,
+                     'user_movies'=user_movies,
+                     'occupation'=occupation )
+    return( retvals )
 }
 # ######################################################################################################
 
