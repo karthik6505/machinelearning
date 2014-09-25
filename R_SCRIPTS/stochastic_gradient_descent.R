@@ -941,7 +941,9 @@ cat(HEADER)
 
 
     if ( RUN_VALIDATE_SGD ) {
+        sink( 'output.stochastic_gradient_descent.out', split=TRUE )
         SGD = VERIFY_AND_VALIDATE_SGD ( SYNTHETIC_TEST=FALSE, REGULARIZATION_STRENGTH=1E-3 )
+        sink()
     }
 
 

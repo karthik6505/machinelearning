@@ -21,6 +21,7 @@
 # @DATE:    September, 2014
 # @URL:     http://www.bitbucket.org/nelsonmanohar/machinelearning
 # ######################################################################################################
+sink( "output.recommender_system.out", split=TRUE )
 LICENSETEXT = "These R code samples (version Sep/2014), Copyright (C) Nelson R. Manohar,
 comes with ABSOLUTELY NO WARRANTY.  This is free software, and you are welcome to 
 redistribute it under conditions of the GNU General Public License." 
@@ -45,28 +46,18 @@ source( 'stochastic_gradient_descent.R' )
 # ######################################################################################################
 
 
+
 # ###################################################################################################
-# GLOBALS ***** GLOBALS ***** GLOBALS ***** GLOBALS ***** GLOBALS ***** GLOBALS ***** GLOBALS *****
+U2ID = function( USER,  p=10 ) { as.integer(substr( USER,  2, p )) }
+M2ID = function( MOVIE, p=10 ) { as.integer(substr( MOVIE, 2, p )) }
+ID2M = function( ID ) { paste( "M", ID, sep="")}
+ID2U = function( ID ) { paste( "U", ID, sep="")}
 # ###################################################################################################
-PRECOMPUTED_OPTIMIZED_TRANSFORMS_DISTANCE_MATRIX = matrix(0)
-MY_DISTANCE_MATRIX_RETVALS = list()
-# ###################################################################################################
+
 
 
 # ###################################################################################################
 COMBINED_RECOMMENDER_SYSTEM = function() {
-}
-# ###################################################################################################
-
-
-# ###################################################################################################
-IDENTIFY_SIMILAR_USERS  = function( ) {
-}
-# ###################################################################################################
-
-
-# ###################################################################################################
-IDENTIFY_SIMILAR_MOVIES = function( ) {
 }
 # ###################################################################################################
 
@@ -430,7 +421,7 @@ GENERATE_COLLABORATIVE_FILTERED_RATINGS = function( WHICH_RATINGS, USER_PREFEREN
     for ( MOVIE in colnames(USER_TO_MOVIE_RATINGS)) {
         u_idxs = names(which( !is.na(WHICH_RATINGS[,MOVIE]) ))
 
-        print( sprintf( "%s : [%4d w/ selected ratings] : %s ", MOVIE, length(u_idxs), as.character(M[substr(MOVIE,2,10),"movie_title"]) )) 
+        print( sprintf( "%s : [%4d w/ selected ratings] : %s ", MOVIE, length(u_idxs), as.character(M[M2ID(MOVIE),"movie_title"]) )) 
 
         SUMMARY(RECOMMENDATIONS_FOR_U2M_RATINGS[,MOVIE])
 
@@ -488,7 +479,132 @@ DENORMALIZE_MEAN_NORMALIZED_PREDICTIONS = function( USERS_WRT_MOVIE_PRED, USER_M
 # ###################################################################################################
 
 
+# ###################################################################################################
+EXTRACT_DISTANCE_MATRIX_AND_PCA_FROM = function( DR2, REF=matrix(), debug=FALSE ) {
+    Z2   = as.matrix(DR2$pca_space)
+    D2   = as.matrix(DR2$distances)
 
+    if ( debug ) {
+        cat(HEADER)
+        str(DR2)
+        str(D2)
+        str(Z2)
+        str(REF)
+        cat(HEADER)
+    }
+
+    # D is square matrix wrt ref
+    rownames(D2) = rownames(REF)
+    colnames(D2) = rownames(REF)
+
+    # PCA has as many rows as the ref
+    rownames(Z2) = rownames(REF)
+
+    retvals = list( 'Z'=Z2, 'D'=D2 )
+
+    return ( retvals )
+}    
+# ###################################################################################################
+
+
+# ###################################################################################################
+# SDS = FIND_NEIGHBORING_POINTS( RU2M, FRETVALS1$closest, D=D, PCA=Z, color="brown", new_plot=FALSE)
+# ###################################################################################################
+IDENTIFY_SIMILAR_USERS = function( USER, U2M_RECMAT, D=matrix(), Z=matrix() ) {
+    M1 = MIN_DISTANCE_FROM( U2M_RECMAT, USER,  D=D, PCA=Z, do_plot=TRUE, new_plot=FALSE, debug_=FALSE )
+
+    FDS = FIND_NEIGHBORING_POINTS( U2M_RECMAT, USER, D=D, PCA=Z, color="red", new_plot=FALSE)
+
+    print( sprintf( "BASED ON FIT/PREDICTED MOVIE RATING SIMILARITIES, SIMILAR USERS ARE: %s", USER ))
+
+    NEARBY = FDS$nearby   
+
+    u1_idx = U2ID(USER)
+    for ( NUSER in NEARBY ) {
+        u2_idx = U2ID(NUSER)
+        print( sprintf( "%30s ---> %30s", CONCAT(U[u1_idx,]), CONCAT(U[u2_idx,]) ) )
+    }
+
+    retvals = list( 'NEIGHBORS'=FDS, 'MIN_DETAILS'=M1 )
+
+    return ( retvals )
+}
+# ###################################################################################################
+
+
+# ###################################################################################################
+ANALYZE_SIMILAR_USER_FOR_MOVIE_RECOMMENDATIONS = function( USER1, NEARBY, nl=300 ) {
+    u1_idx = U2ID(USER1)
+    U1_MOVIES = which( !is.na( ORIG_RATINGS[USER1,])  )
+
+    for ( USER2 in NEARBY ) {
+        u2_idx = U2ID(USER2)
+        U2_MOVIES = which( !is.na( ORIG_RATINGS[USER2,])  )
+
+        SAME_MOVIES = intersect( U2_MOVIES, U1_MOVIES )
+        MORE_MOVIES = setdiff(   U2_MOVIES, U1_MOVIES )
+
+        if ( length(MORE_MOVIES) == 0 ) next
+
+        mtxt = stxt = "NONE"
+
+        if ( length(MORE_MOVIES!= 0 ))
+        mtxt = CONCAT(sprintf( "[%s stars]: %s,  ", as.numeric(ORIG_RATINGS[USER2,ID2M(MORE_MOVIES)]), as.character(M[MORE_MOVIES,"movie_title"])))
+
+        if ( length(SAME_MOVIES!= 0 ))
+        stxt = CONCAT(sprintf( "[%s stars]: %s,  ", as.numeric(ORIG_RATINGS[USER2,ID2M(SAME_MOVIES)]), as.character(M[SAME_MOVIES,"movie_title"])))
+
+        cat(HEADER)
+        print( sprintf( "%30s ---> %30s", CONCAT(U[u1_idx,]), CONCAT(U[u2_idx,]) ) )
+        print( paste( substr( stxt, 1, nl ), "..." ) )
+        cat(HEADER)
+        print( paste( substr( mtxt, 1, nl ), "..." ) )
+        cat(HEADER)
+    }
+
+    # for some movie wrt to user1 find movies matching distance on user2
+    # dist( ORIG_RATINGS[USER1,U1_MOVIES], ORIG_RATINGS[USER2,U2_MOVIES], method=p
+    TOPMOST = c()
+
+    retvals = list( 'SAME'=SAME_MOVIES, 'MORE'=MORE_MOVIES, 'TOP_RANK'=TOPMOST, 'SUMMARY_S'=stxt, 'SUMMARY_M'=mtxt ) 
+
+    return ( retvals ) 
+}
+# ###################################################################################################
+
+
+# ###################################################################################################
+WHICH_ONES_TO_RECOMMEND = function( USER1, USER2, SAME, MORE, D=matrix(), Z=matrix(), debug=FALSE ) {
+    retvals = list( 'RECOMMENDATION'=NA, 'RATINGS'=NA )
+
+    D3i = intersect(colnames(D),ID2M(SAME))
+    D3j = intersect(colnames(D),ID2M(MORE))
+    D3j = setdiff( D3j, D3i )
+
+    if ( length(D3i) == 0 ) return ( retvals )
+    if ( length(D3j) == 0 ) return ( retvals )
+
+    D3 = D[D3i,D3j]
+    if (identical(D3, matrix())) return ( retvals ) 
+
+    min_inds = which(D3== min(D3), arr.ind=TRUE)
+    if ( debug ) str(min_inds)
+    if ( class(min_inds)  != "matrix" ) return ( retvals )
+
+    if ( nrow( min_inds ) != 0 ) { 
+        U1_MOVIE = min_inds[1,1]
+        U2_MOVIE = min_inds[1,2]
+        U1_MOVIE = rownames(D3)[U1_MOVIE]
+        U2_MOVIE = colnames(D3)[U2_MOVIE]
+        RATING = ORIG_RATINGS[USER2, U2_MOVIE]
+        print( sprintf( "BECAUSE YOU LIKED %s: [%s]", U1_MOVIE, M[M2ID(U1_MOVIE),"movie_title"] ))
+        print( sprintf( "A MYSTEROUS CLOUD NOW RECOMMENDS YOU %s [%s stars]: [%s]", U2_MOVIE, RATING, M[M2ID(U2_MOVIE),"movie_title"] ))
+        retvals = list( 'RECOMMENDATION'=U2_MOVIE, 'RATINGS'=RATING )
+    }
+
+    return ( retvals )
+}
+# ###################################################################################################
 
 
 
@@ -504,6 +620,9 @@ DENORMALIZE_MEAN_NORMALIZED_PREDICTIONS = function( USERS_WRT_MOVIE_PRED, USER_M
     # J = as.data.frame(JRETVALS$J)
     # AGG_J = aggregate( J$AVG ~ as.factor(J$NR), J, mean )
     # ###################################################################################################
+
+
+
 
 
 
@@ -627,3 +746,86 @@ NEWLINE(10)
     # ###################################################################################################
 
 
+
+
+
+
+# ###################################################################################################
+# ###################################################################################################
+# ###################################################################################################
+
+
+
+
+
+
+
+    # ###################################################################################################
+    USER_LABELS  = rownames(WHICH_RATINGS)
+    MOVIE_LABELS = colnames(WHICH_RATINGS)
+    # ###################################################################################################
+
+    # ###################################################################################################
+    COMPARISON_USER  = USER_LABELS [4]
+    COMPARISON_MOVIE = MOVIE_LABELS[4]
+    # ###################################################################################################
+
+    # ###################################################################################################
+    RU2M = RECOMMENDATIONS_FOR_U2M_RATINGS 
+    RM2U = t(RECOMMENDATIONS_FOR_U2M_RATINGS)
+    # ###################################################################################################
+
+    # ###################################################################################################
+    SAMPLED_MOVIES = sample( colnames(RU2M), nrow(RU2M))
+    RET1= GET_DISTANCE_MATRIX(RECOMMENDATIONS_FOR_U2M_RATINGS[,SAMPLED_MOVIES],    do_scaling=TRUE, do_plot=TRUE, transform="", vargoal=0.90) 
+    DR1 = EXTRACT_DISTANCE_MATRIX_AND_PCA_FROM( RET1, REF=RU2M, debug=TRUE )
+    Z1   = DR1$Z
+    D1   = DR1$D
+    # ###################################################################################################
+
+    # ###################################################################################################
+    RET2 = GET_DISTANCE_MATRIX(t(RECOMMENDATIONS_FOR_U2M_RATINGS), do_scaling=TRUE, do_plot=TRUE, transform="in_pca_domain", vargoal=0.90) 
+    DR2  = EXTRACT_DISTANCE_MATRIX_AND_PCA_FROM( RET2, REF=RM2U, debug=TRUE )
+    Z2   = DR2$Z
+    D2   = DR2$D
+    # ###################################################################################################
+
+    # ###################################################################################################
+    for( USER in USER_LABELS ) {
+        SIMILARITY_RVALS = IDENTIFY_SIMILAR_USERS( USER, RU2M, D=D1, Z=Z1 )
+            NEARBY  = SIMILARITY_RVALS$NEIGHBORS$nearby   
+            CLOSEST = SIMILARITY_RVALS$NEIGHBORS$closest
+
+        # retvals = list( 'SAME'=SAME_MOVIES, 'MORE'=MORE_MOVIES, 'TOP_RANK'=TOPMOST, 'SUMMARY_S'=stxt, 'SUMMARY_M'=mtxt ) 
+        RETVALS = ANALYZE_SIMILAR_USER_FOR_MOVIE_RECOMMENDATIONS( COMPARISON_USER, CLOSEST )
+        SAME = RETVALS$SAME
+        MORE = RETVALS$MORE
+        D4 = WHICH_ONES_TO_RECOMMEND( COMPARISON_USER, CLOSEST, SAME, MORE, D=D2, Z=Z2 )
+        METRICS = TIMESTAMP( paste('GET_DIST1', USER) )
+        cat(HEADER)
+        cat(HEADER)
+        cat(HEADER)
+        NEWLINE(1)
+    }
+
+    # ###################################################################################################
+
+
+
+        # SIMILARITY_RVALS = IDENTIFY_SIMILAR_USERS( USER, RU2M, D=D1, Z=Z1 )
+        # M2 = MIN_DISTANCE_FROM( RM2U, MOVIE_LABELS[3], D=D2, PCA=Z2, do_plot=TRUE, new_plot=FALSE, debug_=FALSE )
+        # FRETVALS1 = FIND_NEIGHBORING_POINTS( RM2U, MOVIE_LABELS[2],   D=D2, PCA=Z2, color="red", new_plot=FALSE)
+        # FRETVALS2 = FIND_NEIGHBORING_POINTS( RM2U, FRETVALS1$closest, D=D2, PCA=Z2, color="brown", new_plot=FALSE)
+
+    # METRICS = TIMESTAMP( 'GET_DIST2' )
+    # ###################################################################################################
+    # print( METRICS )
+
+ 
+
+ 
+
+
+
+
+sink()
