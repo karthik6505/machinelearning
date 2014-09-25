@@ -476,12 +476,12 @@ BUILD_RATINGS_MATRIX = function( RATINGS, MOVIES, M, N, INIT_VAL=NA, debug=FALSE
 
 # ######################################################################################################
 BUILD_MOVIELENS_DATASET = function( ) {
-    ratings   = read.csv( 'ml-100k/u.data', sep="\t", header=TRUE ) 
-    genre     = read.csv( 'ml-100k/u.genre',sep="|",  header=TRUE, stringsAsFactors=TRUE )
-    info      = read.csv( 'ml-100k/u.info', sep=" ",  header=TRUE )
-    movies    = read.csv( 'ml-100k/u.item', sep="|",  header=TRUE )
-    occupation= read.csv( 'ml-100k/u.occupation', sep=" ",  header=TRUE )
-    users     = read.csv( 'ml-100k/u.user', sep="|",  header=TRUE )
+    ratings   = read.csv( 'ml-100k/u.data', sep="\t", header=TRUE, fileEncoding="latin1" ) 
+    genre     = read.csv( 'ml-100k/u.genre',sep="|",  header=TRUE, stringsAsFactors=TRUE, fileEncoding="latin1" )
+    info      = read.csv( 'ml-100k/u.info', sep=" ",  header=TRUE, fileEncoding="latin1" )
+    movies    = read.csv( 'ml-100k/u.item', sep="|",  header=TRUE, fileEncoding="latin1" )
+    occupation= read.csv( 'ml-100k/u.occupation', sep=" ",  header=TRUE, fileEncoding="latin1" )
+    users     = read.csv( 'ml-100k/u.user', sep="|",  header=TRUE, fileEncoding="latin1" )
     N_USERS   = nrow(users)
     N_MOVIES  = nrow(movies)
     N_GENRE   = nrow(genre)

@@ -508,21 +508,21 @@ EXTRACT_DISTANCE_MATRIX_AND_PCA_FROM = function( DR2, REF=matrix(), debug=FALSE 
 
 
 # ###################################################################################################
-# SDS = FIND_NEIGHBORING_POINTS( RU2M, FRETVALS1$closest, D=D, PCA=Z, color="brown", new_plot=FALSE)
-# ###################################################################################################
-IDENTIFY_SIMILAR_USERS = function( USER, U2M_RECMAT, D=matrix(), Z=matrix() ) {
-    M1 = MIN_DISTANCE_FROM( U2M_RECMAT, USER,  D=D, PCA=Z, do_plot=TRUE, new_plot=FALSE, debug_=FALSE )
+IDENTIFY_SIMILAR_USERS = function( USER, U2M_RECMAT, D=matrix(), Z=matrix(), debug=FALSE ) {
+    M1 = MIN_DISTANCE_FROM( U2M_RECMAT, USER,  D=D, PCA=Z, do_plot=TRUE, new_plot=TRUE, debug_=FALSE )
 
-    FDS = FIND_NEIGHBORING_POINTS( U2M_RECMAT, USER, D=D, PCA=Z, color="red", new_plot=FALSE)
+    FDS = FIND_NEIGHBORING_POINTS( U2M_RECMAT, USER, D=D, PCA=Z, color="brown", new_plot=FALSE)
 
-    print( sprintf( "BASED ON FIT/PREDICTED MOVIE RATING SIMILARITIES, SIMILAR USERS ARE: %s", USER ))
+    print( sprintf( "BASED ON FIT/PREDICTED MOVIE RATING SIMILARITIES, SIMILAR USERS ARE: %s", FDS$closest ))
 
     NEARBY = FDS$nearby   
 
-    u1_idx = U2ID(USER)
-    for ( NUSER in NEARBY ) {
-        u2_idx = U2ID(NUSER)
-        print( sprintf( "%30s ---> %30s", CONCAT(U[u1_idx,]), CONCAT(U[u2_idx,]) ) )
+    if ( debug  ) {
+        u1_idx = U2ID(USER)
+        for ( NUSER in NEARBY ) {
+            u2_idx = U2ID(NUSER)
+            print( sprintf( "%30s ---> %30s", CONCAT(U[u1_idx,]), CONCAT(U[u2_idx,]) ) )
+        }
     }
 
     retvals = list( 'NEIGHBORS'=FDS, 'MIN_DETAILS'=M1 )
@@ -533,7 +533,7 @@ IDENTIFY_SIMILAR_USERS = function( USER, U2M_RECMAT, D=matrix(), Z=matrix() ) {
 
 
 # ###################################################################################################
-ANALYZE_SIMILAR_USER_FOR_MOVIE_RECOMMENDATIONS = function( USER1, NEARBY, nl=300 ) {
+ANALYZE_SIMILAR_USER_FOR_MOVIE_RECOMMENDATIONS = function( USER1, NEARBY, nl=120 ) {
     u1_idx = U2ID(USER1)
     U1_MOVIES = which( !is.na( ORIG_RATINGS[USER1,])  )
 
@@ -546,7 +546,8 @@ ANALYZE_SIMILAR_USER_FOR_MOVIE_RECOMMENDATIONS = function( USER1, NEARBY, nl=300
 
         if ( length(MORE_MOVIES) == 0 ) next
 
-        mtxt = stxt = "NONE"
+        mtxt = "NONE"
+        stxt = "NONE"
 
         if ( length(MORE_MOVIES!= 0 ))
         mtxt = CONCAT(sprintf( "[%s stars]: %s,  ", as.numeric(ORIG_RATINGS[USER2,ID2M(MORE_MOVIES)]), as.character(M[MORE_MOVIES,"movie_title"])))
@@ -607,7 +608,24 @@ WHICH_ONES_TO_RECOMMEND = function( USER1, USER2, SAME, MORE, D=matrix(), Z=matr
 # ###################################################################################################
 
 
+# ###################################################################################################
+FIND_ALTERNATIVE_RECOMMENDATION_WRT = function( COMPARISON_USER, CLOSEST, D1, Z1, D2, Z2, RU2M ) {
+    SDS = FIND_NEIGHBORING_POINTS( RU2M, CLOSEST, D=D1, PCA=Z1, color="blue", new_plot=FALSE)
+    SDS_CLOSEST = SDS$closest
+    print( paste( "FOUND NO IMMEDIATE RECOMMENDATION, REACHING OUT TO CLOSEST 2ND DEGREE", SDS_CLOSEST ) )
 
+    SDS_RETVALS = ANALYZE_SIMILAR_USER_FOR_MOVIE_RECOMMENDATIONS( COMPARISON_USER, SDS_CLOSEST )
+        SDS_SAME = SDS_RETVALS$SAME
+        SDS_MORE = SDS_RETVALS$MORE
+
+    SDS_RECOMMENDED_FOR_USER = WHICH_ONES_TO_RECOMMEND( COMPARISON_USER, SDS_CLOSEST, SDS_SAME, SDS_MORE, D=D2, Z=Z2 )
+
+    if( is.na(SDS_RECOMMENDED_FOR_USER$RECOMMENDATION ) )
+        print( paste( "FOUND NO IMMEDIATE RECOMMENDATION EVEN FOR CLOSEST 2ND DEGREE", SDS_CLOSEST ) )
+
+    return ( SDS_RECOMMENDED_FOR_USER  )
+}
+# ###################################################################################################
 
 
 
@@ -791,16 +809,25 @@ NEWLINE(10)
     # ###################################################################################################
 
     # ###################################################################################################
+    # ###################################################################################################
+
+    # ###################################################################################################
     for( USER in USER_LABELS ) {
+        DO_PCA_FULL_PLOT( Z2, nmax=512, cex=0.3, pch="o" )
+
         SIMILARITY_RVALS = IDENTIFY_SIMILAR_USERS( USER, RU2M, D=D1, Z=Z1 )
             NEARBY  = SIMILARITY_RVALS$NEIGHBORS$nearby   
             CLOSEST = SIMILARITY_RVALS$NEIGHBORS$closest
 
-        # retvals = list( 'SAME'=SAME_MOVIES, 'MORE'=MORE_MOVIES, 'TOP_RANK'=TOPMOST, 'SUMMARY_S'=stxt, 'SUMMARY_M'=mtxt ) 
         RETVALS = ANALYZE_SIMILAR_USER_FOR_MOVIE_RECOMMENDATIONS( COMPARISON_USER, CLOSEST )
-        SAME = RETVALS$SAME
-        MORE = RETVALS$MORE
-        D4 = WHICH_ONES_TO_RECOMMEND( COMPARISON_USER, CLOSEST, SAME, MORE, D=D2, Z=Z2 )
+            SAME = RETVALS$SAME
+            MORE = RETVALS$MORE
+
+        RECOMMENDED_FOR_USER = WHICH_ONES_TO_RECOMMEND( COMPARISON_USER, CLOSEST, SAME, MORE, D=D2, Z=Z2 )
+            REC_TOPMOST = RECOMMENDED_FOR_USER$RECOMMENDATION 
+            REC_RATING  = RECOMMENDED_FOR_USER$RATING
+            if ( is.na(REC_TOPMOST) ) FIND_ALTERNATIVE_RECOMMENDATION_WRT( COMPARISON_USER, CLOSEST, D1, Z1, D2, Z2, RU2M )
+
         METRICS = TIMESTAMP( paste('GET_DIST1', USER) )
         cat(HEADER)
         cat(HEADER)
@@ -811,11 +838,6 @@ NEWLINE(10)
     # ###################################################################################################
 
 
-
-        # SIMILARITY_RVALS = IDENTIFY_SIMILAR_USERS( USER, RU2M, D=D1, Z=Z1 )
-        # M2 = MIN_DISTANCE_FROM( RM2U, MOVIE_LABELS[3], D=D2, PCA=Z2, do_plot=TRUE, new_plot=FALSE, debug_=FALSE )
-        # FRETVALS1 = FIND_NEIGHBORING_POINTS( RM2U, MOVIE_LABELS[2],   D=D2, PCA=Z2, color="red", new_plot=FALSE)
-        # FRETVALS2 = FIND_NEIGHBORING_POINTS( RM2U, FRETVALS1$closest, D=D2, PCA=Z2, color="brown", new_plot=FALSE)
 
     # METRICS = TIMESTAMP( 'GET_DIST2' )
     # ###################################################################################################

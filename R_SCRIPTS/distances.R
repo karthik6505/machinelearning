@@ -147,9 +147,7 @@ GET_DISTANCE_MATRIX = function( xdf, dist_metric="euclidean", do_scaling=TRUE, d
 
     VERIFY( "dist(pca(1-prob(scaled_x),vargoal))", z)
     if ( do_plot ) {
-        sampled_rows = sample(1:nrow(x),min(512,nrow(y)))
-        zp = as.matrix(z)
-        plot( zp[sampled_rows,] )
+        DO_PCA_FULL_PLOT( z, nmax=512, cex=1.0, pch="+" )
         METRICS <<- TIMESTAMP( "PLOT" )
     }
 
@@ -205,7 +203,7 @@ MIN_DISTANCE_FROM = function( X, i, D=matrix(), PCA=matrix(), do_plot=TRUE, debu
 
 
 # ###################################################################################################
-FIND_NEIGHBORING_POINTS = function( X, ix, D=matrix(), PCA=matrix(), new_plot=FALSE, color="red", debug=FALSE ) {
+FIND_NEIGHBORING_POINTS = function( X, ix, D=matrix(), PCA=matrix(), new_plot=FALSE, color="brown", debug=FALSE ) {
     cat( HEADER )
     print( sprintf("LOOKING FOR SIMILAR ITEMS TO %s",  ix ) )
 
@@ -230,13 +228,10 @@ FIND_NEIGHBORING_POINTS = function( X, ix, D=matrix(), PCA=matrix(), new_plot=FA
                    (length(nearby)-1)/length(rownames(X))*100,
                     sigma_level/sigma ) )
 
-    if ( new_plot ) 
-        DO_PCA_NEIGHBORING_PLOT( ix, nearby[1], PCA, new_plot=new_plot )
-
     for ( ij in nearby ) { 
         if ( ij == ix ) next
         DO_PCA_NEIGHBORING_PLOT( ix, ij, PCA, new_plot=FALSE, color=color )
-        print ( paste( ix, x_ij_distances[ij], ij )) 
+        if ( debug ) print ( paste( ix, x_ij_distances[ij], ij )) 
     }
     cat( HEADER )
 
@@ -248,21 +243,33 @@ FIND_NEIGHBORING_POINTS = function( X, ix, D=matrix(), PCA=matrix(), new_plot=FA
 
 
 # ###################################################################################################
-DO_PCA_NEIGHBORING_PLOT = function( i, min_ij_idx, Z, new_plot=FALSE, color="red" ) {
+DO_PCA_FULL_PLOT = function( Z, nmax=0, pch="+", ... ) {
+    zp = as.matrix(Z)
+    if ( nmax== 0 )   nmax = nrow(Z)
+    if ( nmax > 2E3 ) nmax = min(1E4, nrow(Z))
+    sampled_rows = sample(rownames(Z),nmax)
+    plot(x=as.matrix(Z[,1]), y=as.matrix(Z[,2]), ... )
+}
+# ###################################################################################################
+
+
+# ###################################################################################################
+DO_PCA_NEIGHBORING_PLOT = function( i, min_ij_idx, Z, new_plot=FALSE, color="green" ) {
     if ( nrow(Z) ) {
         dx= Z[i,1]/20  * rnorm(1,1,2)
         dy= Z[i,2]/20  * rnorm(1,1,2)
 
         if ( new_plot ) {
-            plot(x=Z[,1], y=Z[,2], pch=".", cex=1.5 )
-            points( x=Z[i,1], y=Z[i,2], col="blue", bg="blue", pch=24,  cex=1.5 )
+            points( x=Z[i,1], y=Z[i,2], col="blue", bg="blue", pch=24,  cex=1.3 )
+
             x1lab = paste( "WRT:", i )
-            text( x=Z[i,1]+dx, y=Z[i,2], x1lab, col="blue", cex=1.0 )
+            text( x=Z[i,1]+dx, y=Z[i,2], x1lab, col="blue", cex=0.8 )
         }
 
-        points( x=Z[min_ij_idx,1],  y=Z[min_ij_idx,2], col=color,  bg=color,  pch=23,  cex=1.5 )
-        x2lab = paste( "MIN=", min_ij_idx)
-        text( x=Z[min_ij_idx,1]+dx, y=Z[min_ij_idx,2], x2lab, col=color,  cex=1.0 )
+        points( x=Z[min_ij_idx,1],  y=Z[min_ij_idx,2], col=color, bg=color, pch=23, cex=0.8 )
+
+        x2lab = paste( "MIN=", min_ij_idx )
+        text( x=Z[min_ij_idx,1]+dx, y=Z[min_ij_idx,2], x2lab, col=color, cex=0.4 )
     }
 }
 # ###################################################################################################
