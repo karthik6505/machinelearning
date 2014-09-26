@@ -233,7 +233,6 @@ FIND_NEIGHBORING_POINTS = function( X, ix, D=matrix(), PCA=matrix(), new_plot=FA
         DO_PCA_NEIGHBORING_PLOT( ix, ij, PCA, new_plot=FALSE, color=color )
         if ( debug ) print ( paste( ix, x_ij_distances[ij], ij )) 
     }
-    cat( HEADER )
 
     retvals = list( 'from'=ix, 'closest'=xmin, 'mu'=mu, 'sigmas_away_from_median'=sigma_level/sigma, 'nearby'=nearby )
 
@@ -260,16 +259,16 @@ DO_PCA_NEIGHBORING_PLOT = function( i, min_ij_idx, Z, new_plot=FALSE, color="gre
         dy= Z[i,2]/20  * rnorm(1,1,2)
 
         if ( new_plot ) {
-            points( x=Z[i,1], y=Z[i,2], col="blue", bg="blue", pch=24,  cex=1.3 )
+            points( x=Z[i,1], y=Z[i,2], col="blue", bg="blue", pch=24,  cex=0.7 )
 
             x1lab = paste( "WRT:", i )
-            text( x=Z[i,1]+dx, y=Z[i,2], x1lab, col="blue", cex=0.8 )
+            text( x=Z[i,1]+dx, y=Z[i,2], x1lab, col="blue", cex=0.7 )
         }
 
-        points( x=Z[min_ij_idx,1],  y=Z[min_ij_idx,2], col=color, bg=color, pch=23, cex=0.8 )
+        points( x=Z[min_ij_idx,1],  y=Z[min_ij_idx,2], col=color, bg=color, pch=23, cex=0.7 )
 
         x2lab = paste( "MIN=", min_ij_idx )
-        text( x=Z[min_ij_idx,1]+dx, y=Z[min_ij_idx,2], x2lab, col=color, cex=0.4 )
+        text( x=Z[min_ij_idx,1]+dx, y=Z[min_ij_idx,2], x2lab, col=color, cex=0.7 )
     }
 }
 # ###################################################################################################

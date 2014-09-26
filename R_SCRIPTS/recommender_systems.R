@@ -537,6 +537,9 @@ ANALYZE_SIMILAR_USER_FOR_MOVIE_RECOMMENDATIONS = function( USER1, NEARBY, nl=120
     u1_idx = U2ID(USER1)
     U1_MOVIES = which( !is.na( ORIG_RATINGS[USER1,])  )
 
+    mtxt = "NONE"
+    stxt = "NONE"
+
     for ( USER2 in NEARBY ) {
         u2_idx = U2ID(USER2)
         U2_MOVIES = which( !is.na( ORIG_RATINGS[USER2,])  )
@@ -546,20 +549,16 @@ ANALYZE_SIMILAR_USER_FOR_MOVIE_RECOMMENDATIONS = function( USER1, NEARBY, nl=120
 
         if ( length(MORE_MOVIES) == 0 ) next
 
-        mtxt = "NONE"
-        stxt = "NONE"
-
         if ( length(MORE_MOVIES!= 0 ))
         mtxt = CONCAT(sprintf( "[%s stars]: %s,  ", as.numeric(ORIG_RATINGS[USER2,ID2M(MORE_MOVIES)]), as.character(M[MORE_MOVIES,"movie_title"])))
 
         if ( length(SAME_MOVIES!= 0 ))
-        stxt = CONCAT(sprintf( "[%s stars]: %s,  ", as.numeric(ORIG_RATINGS[USER2,ID2M(SAME_MOVIES)]), as.character(M[SAME_MOVIES,"movie_title"])))
+        stxt = CONCAT(sprintf( "[%s:%s stars]: %s,  ", as.numeric(ORIG_RATINGS[USER1,ID2M(SAME_MOVIES)]),
+                                                       as.numeric(ORIG_RATINGS[USER2,ID2M(SAME_MOVIES)]), as.character(M[SAME_MOVIES,"movie_title"])))
 
-        cat(HEADER)
         print( sprintf( "%30s ---> %30s", CONCAT(U[u1_idx,]), CONCAT(U[u2_idx,]) ) )
-        print( paste( substr( stxt, 1, nl ), "..." ) )
-        cat(HEADER)
-        print( paste( substr( mtxt, 1, nl ), "..." ) )
+        print( paste( sprintf("[SAME(%4s:%4s)] -> ", USER1, USER2), substr( stxt, 1, nl ), "..." ) )
+        print( paste( sprintf("[MORE(%4s:%4s)] -> ", USER1, USER2), substr( mtxt, 1, nl ), "..." ) )
         cat(HEADER)
     }
 
@@ -575,6 +574,8 @@ ANALYZE_SIMILAR_USER_FOR_MOVIE_RECOMMENDATIONS = function( USER1, NEARBY, nl=120
 
 
 # ###################################################################################################
+# TODO: add weighted distance too, wrt ratings * distance, plot all points
+# ###################################################################################################
 WHICH_ONES_TO_RECOMMEND = function( USER1, USER2, SAME, MORE, D=matrix(), Z=matrix(), debug=FALSE ) {
     retvals = list( 'RECOMMENDATION'=NA, 'RATINGS'=NA )
 
@@ -588,37 +589,58 @@ WHICH_ONES_TO_RECOMMEND = function( USER1, USER2, SAME, MORE, D=matrix(), Z=matr
     D3 = D[D3i,D3j]
     if (identical(D3, matrix())) return ( retvals ) 
 
-    min_inds = which(D3== min(D3), arr.ind=TRUE)
-    if ( debug ) str(min_inds)
-    if ( class(min_inds)  != "matrix" ) return ( retvals )
+    MOVIE_DISTANCE_GOAL = 1.01 * min(D3) 
+    D_RETVALS = WHICH_MOVIES_FROM_THIS_USER_ARE_CLOSE( USER2, D3, Z, MOVIE_DISTANCE_GOAL )
 
-    if ( nrow( min_inds ) != 0 ) { 
-        U1_MOVIE = min_inds[1,1]
-        U2_MOVIE = min_inds[1,2]
-        U1_MOVIE = rownames(D3)[U1_MOVIE]
-        U2_MOVIE = colnames(D3)[U2_MOVIE]
-        RATING = ORIG_RATINGS[USER2, U2_MOVIE]
-        print( sprintf( "BECAUSE YOU LIKED %s: [%s]", U1_MOVIE, M[M2ID(U1_MOVIE),"movie_title"] ))
-        print( sprintf( "A MYSTEROUS CLOUD NOW RECOMMENDS YOU %s [%s stars]: [%s]", U2_MOVIE, RATING, M[M2ID(U2_MOVIE),"movie_title"] ))
-        retvals = list( 'RECOMMENDATION'=U2_MOVIE, 'RATINGS'=RATING )
-    }
+    if ( debug ) print ( D_RETVALS )
 
-    return ( retvals )
+    return ( D_RETVALS )
+
 }
 # ###################################################################################################
 
 
 # ###################################################################################################
-FIND_ALTERNATIVE_RECOMMENDATION_WRT = function( COMPARISON_USER, CLOSEST, D1, Z1, D2, Z2, RU2M ) {
+WHICH_MOVIES_FROM_THIS_USER_ARE_CLOSE = function( USER2, D3, Z2, distance_goal, nmax=3, debug=FALSE ) { 
+    retvals = list( 'RECOMMENDATION'=NA, 'RATINGS'=NA, 'IDX'=NA )
+
+    min_inds = which(D3 <= distance_goal, arr.ind=TRUE)
+    if ( class(min_inds)  != "matrix" ) return ( retvals )
+    for ( ix in 1:min(nrow( min_inds ),nmax) ) {
+        U1_MOVIE = min_inds[ix,1]
+        U2_MOVIE = min_inds[ix,2]
+        U1_MOVIE = rownames(D3)[U1_MOVIE]
+        U2_MOVIE = colnames(D3)[U2_MOVIE]
+        RATING = ORIG_RATINGS[USER2, U2_MOVIE]
+        print( sprintf( "BECAUSE YOU LIKED %s: [%s]", U1_MOVIE, M[M2ID(U1_MOVIE),"movie_title"] ))
+        print( sprintf( "   A MYSTEROUS CLOUD NOW RECOMMENDS YOU %s [%s stars]: [%s]", U2_MOVIE, RATING, M[M2ID(U2_MOVIE),"movie_title"] ))
+        # DO_PCA_NEIGHBORING_PLOT( U1_MOVIE, U2_MOVIE, Z2, new_plot=FALSE, color="brown" )
+ 
+    }
+    retvals = list( 'RECOMMENDATION'=U2_MOVIE, 'RATINGS'=RATING, 'IDX'=min_inds )
+
+    return (retvals )
+}
+# ###################################################################################################
+
+
+# ###################################################################################################
+# We could also try other neighbors in NEARBY to find a recommendation
+# ###################################################################################################
+FIND_ALTERNATIVE_RECOMMENDATION_WRT = function( USER1, CLOSEST, D1, Z1, D2, Z2, RU2M ) {
+
     SDS = FIND_NEIGHBORING_POINTS( RU2M, CLOSEST, D=D1, PCA=Z1, color="blue", new_plot=FALSE)
+
     SDS_CLOSEST = SDS$closest
+    # if (SDS_CLOSEST == USER1 ) SDS_CLOSEST = SDS$nearby
+
     print( paste( "FOUND NO IMMEDIATE RECOMMENDATION, REACHING OUT TO CLOSEST 2ND DEGREE", SDS_CLOSEST ) )
 
-    SDS_RETVALS = ANALYZE_SIMILAR_USER_FOR_MOVIE_RECOMMENDATIONS( COMPARISON_USER, SDS_CLOSEST )
+    SDS_RETVALS = ANALYZE_SIMILAR_USER_FOR_MOVIE_RECOMMENDATIONS( USER1, SDS_CLOSEST )
         SDS_SAME = SDS_RETVALS$SAME
         SDS_MORE = SDS_RETVALS$MORE
 
-    SDS_RECOMMENDED_FOR_USER = WHICH_ONES_TO_RECOMMEND( COMPARISON_USER, SDS_CLOSEST, SDS_SAME, SDS_MORE, D=D2, Z=Z2 )
+    SDS_RECOMMENDED_FOR_USER = WHICH_ONES_TO_RECOMMEND( USER1, SDS_CLOSEST, SDS_SAME, SDS_MORE, D=D2, Z=Z2 )
 
     if( is.na(SDS_RECOMMENDED_FOR_USER$RECOMMENDATION ) )
         print( paste( "FOUND NO IMMEDIATE RECOMMENDATION EVEN FOR CLOSEST 2ND DEGREE", SDS_CLOSEST ) )
@@ -784,11 +806,6 @@ NEWLINE(10)
     # ###################################################################################################
 
     # ###################################################################################################
-    COMPARISON_USER  = USER_LABELS [4]
-    COMPARISON_MOVIE = MOVIE_LABELS[4]
-    # ###################################################################################################
-
-    # ###################################################################################################
     RU2M = RECOMMENDATIONS_FOR_U2M_RATINGS 
     RM2U = t(RECOMMENDATIONS_FOR_U2M_RATINGS)
     # ###################################################################################################
@@ -812,10 +829,10 @@ NEWLINE(10)
     # ###################################################################################################
 
     # ###################################################################################################
-    for( USER in USER_LABELS ) {
+    for( COMPARISON_USER in USER_LABELS ) {
         DO_PCA_FULL_PLOT( Z2, nmax=512, cex=0.3, pch="o" )
 
-        SIMILARITY_RVALS = IDENTIFY_SIMILAR_USERS( USER, RU2M, D=D1, Z=Z1 )
+        SIMILARITY_RVALS = IDENTIFY_SIMILAR_USERS( COMPARISON_USER, RU2M, D=D1, Z=Z1 )
             NEARBY  = SIMILARITY_RVALS$NEIGHBORS$nearby   
             CLOSEST = SIMILARITY_RVALS$NEIGHBORS$closest
 
@@ -828,7 +845,7 @@ NEWLINE(10)
             REC_RATING  = RECOMMENDED_FOR_USER$RATING
             if ( is.na(REC_TOPMOST) ) FIND_ALTERNATIVE_RECOMMENDATION_WRT( COMPARISON_USER, CLOSEST, D1, Z1, D2, Z2, RU2M )
 
-        METRICS = TIMESTAMP( paste('GET_DIST1', USER) )
+        METRICS = TIMESTAMP( paste('GET_DIST1', COMPARISON_USER) )
         cat(HEADER)
         cat(HEADER)
         cat(HEADER)
