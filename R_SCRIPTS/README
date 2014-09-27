@@ -8,81 +8,80 @@ This README would normally document whatever steps are necessary to get your app
     2. Main directory is EMSEMBLE for PYTHON CLASSIFIER ANALYTICS
     3. Main directory is LINEAR_REGRESSION for PYTHON REGRESSION ANALYTICS
 
-
 R_ANALYTICS (R_SCRIPTS DIRECTORY):
 R analytics contain machine learning and predictive analytics in R
 for various general areas. Of course, these have not yet been optimized
 and thus are limited by your environment R's runtime limitations.
 
->* 20K -rw-rw-r-- 1 nrm nrm 9.7K Sep 26 13:25 basket_rules.R
->    Performs heuristic optimization via grid search for Market Basket Analysis 
->    to identify the highest confidence/support RHS for the specified LHS.
->
->* 48K -rw-rw-r-- 1 nrm nrm  38K Sep 25 20:20 recommender_systems.R
->    Implements an iterative convergence collaborative filtering and 
->    recommendation system, tailored for the movielens dataset. 
->    1. Collaborative filtering is done via iterative convergence between 
->       Theta parameters and X-feature parameters. 
->    2. Recomendations are done using euclidean (at this time) distances 
->       wrt shortest-path neighbors at one and two degree of separations.
->
->* 24K -rw-rw-r-- 1 nrm nrm  14K Sep 25 19:56 distances.R
->    Implements by wraping distance computations after various 
->    transformations: pca, probability, and scaling transforms for
->    numerical and/or categorical datasets.
->
->* 36K -rw-rw-r-- 1 nrm nrm  26K Sep 25 17:53 datasets.R
->    Generates and load datasets into expected format for the analytics.
->
->* 36K -rw-rw-r-- 1 nrm nrm  27K Sep 24 18:24 fselect.R
->    Wraps up some selected fSelect.R feature selection algorithms for
->    numerical and categorical datasets on classification and/or regression 
->    problems
->
->* 56K -rw-rw-r-- 1 nrm nrm  46K Sep 24 18:23 stochastic_gradient_descent.R
->    Performs gradient descent, stochastic gradient descent, fminunc, and
->    normal equations with or without regularization over numerical datasets.
->
->* 32K -rw-rw-r-- 1 nrm nrm  23K Sep 24 16:23 utilities.R
->    Wraps ups various common utilities used by various of these modules.
->
->* 36K -rw-rw-r-- 1 nrm nrm  26K Sep 23 21:03 anomaly_detection.R
->    Implements anomaly detection over a numerical dataset wrt to
->    1. Gaussian univariate (independent features) 
->    2. Gaussian multivariate (otherwise)
->
->* 16K -rw-rw-r-- 1 nrm nrm 4.6K Sep 23 21:03 aggregate.R
->    not yet developed. will be a database wrapper for analyzing
->    datasets with or without database aid.
->
->* 24K -rw-rw-r-- 1 nrm nrm  14K Sep 23 01:14 regression.R
->    being developed.
->
->* 20K -rw-rw-r-- 1 nrm nrm 8.3K Sep 22 23:27 plot_functions.R
->    wraps ups visualization scripts, some reusing and/or adapting
->    plotting code available on the web, all with the url-ref/citations
->    to the original site.
->
->* 16K -rw-rw-r-- 1 nrm nrm 7.2K Sep 19 23:59 learning_curves.R
->    not yet developed. Instead, for learning curves, see 
->    stochastic_gradient_descent.R
->
->* 20K -rw-rw-r-- 1 nrm nrm  11K Sep 19 21:16 data.R
->    deprecated.
->
->* 24K -rw-rw-r-- 1 nrm nrm  16K Sep 19 21:16 t_tests.R
->    Implements simpler/selected t_tests statistical tests procedures with 
->        1. iterative or not wrappers 
->        2. over full or subsampled datasets.
->
->* 12K -rw-rw-r-- 1 nrm nrm 1.7K Sep 19 21:14 copyrigth.R
->    GNU license
->
->* 12K -rw-rw-r-- 1 nrm nrm 2.4K Sep 18 23:15 exception.R
->    not yet developed. provides wrapper to exception processing
->
->* 12K -rw-rw-r-- 1 nrm nrm  497 Sep 11 20:30 classifiers.R
->    being developed.
+#### 20K -rw-rw-r-- 1 nrm nrm 9.7K Sep 26 13:25 basket_rules.R ####
+    Performs heuristic optimization via grid search for Market Basket Analysis 
+    to identify the highest confidence/support RHS for the specified LHS.
+
+#### 48K -rw-rw-r-- 1 nrm nrm  38K Sep 25 20:20 recommender_systems.R ####
+    Implements an iterative convergence collaborative filtering and 
+    recommendation system, tailored for the movielens dataset. 
+    1. Collaborative filtering is done via iterative convergence between 
+       Theta parameters and X-feature parameters. 
+    2. Recomendations are done using euclidean (at this time) distances 
+       wrt shortest-path neighbors at one and two degree of separations.
+
+#### 24K -rw-rw-r-- 1 nrm nrm  14K Sep 25 19:56 distances.R ####
+    Implements by wraping distance computations after various 
+    transformations: pca, probability, and scaling transforms for
+    numerical and/or categorical datasets.
+
+#### 36K -rw-rw-r-- 1 nrm nrm  26K Sep 25 17:53 datasets.R ####
+    Generates and load datasets into expected format for the analytics.
+
+#### 36K -rw-rw-r-- 1 nrm nrm  27K Sep 24 18:24 fselect.R ####
+    Wraps up some selected fSelect.R feature selection algorithms for
+    numerical and categorical datasets on classification and/or regression 
+    problems
+
+#### 56K -rw-rw-r-- 1 nrm nrm  46K Sep 24 18:23 stochastic_gradient_descent.R ####
+    Performs gradient descent, stochastic gradient descent, fminunc, and
+    normal equations with or without regularization over numerical datasets.
+
+#### 32K -rw-rw-r-- 1 nrm nrm  23K Sep 24 16:23 utilities.R ####
+    Wraps ups various common utilities used by various of these modules.
+
+#### 36K -rw-rw-r-- 1 nrm nrm  26K Sep 23 21:03 anomaly_detection.R ####
+    Implements anomaly detection over a numerical dataset wrt to
+    1. Gaussian univariate (independent features) 
+    2. Gaussian multivariate (otherwise)
+
+#### 16K -rw-rw-r-- 1 nrm nrm 4.6K Sep 23 21:03 aggregate.R ####
+    not yet developed. will be a database wrapper for analyzing
+    datasets with or without database aid.
+
+#### 24K -rw-rw-r-- 1 nrm nrm  14K Sep 23 01:14 regression.R ####
+    being developed.
+
+#### 20K -rw-rw-r-- 1 nrm nrm 8.3K Sep 22 23:27 plot_functions.R ####
+    wraps ups visualization scripts, some reusing and/or adapting
+    plotting code available on the web, all with the url-ref/citations
+    to the original site.
+
+#### 16K -rw-rw-r-- 1 nrm nrm 7.2K Sep 19 23:59 learning_curves.R ####
+    not yet developed. Instead, for learning curves, see 
+    stochastic_gradient_descent.R
+
+#### 20K -rw-rw-r-- 1 nrm nrm  11K Sep 19 21:16 data.R ####
+    deprecated.
+
+#### 24K -rw-rw-r-- 1 nrm nrm  16K Sep 19 21:16 t_tests.R ####
+    Implements simpler/selected t_tests statistical tests procedures with 
+        1. iterative or not wrappers 
+        2. over full or subsampled datasets.
+
+#### 12K -rw-rw-r-- 1 nrm nrm 1.7K Sep 19 21:14 copyrigth.R ####
+    GNU license
+
+#### 12K -rw-rw-r-- 1 nrm nrm 2.4K Sep 18 23:15 exception.R ####
+    not yet developed. provides wrapper to exception processing
+
+#### 12K -rw-rw-r-- 1 nrm nrm  497 Sep 11 20:30 classifiers.R ####
+    being developed.
 
 
 
