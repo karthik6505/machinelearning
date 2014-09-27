@@ -94,21 +94,22 @@ This README would normally document whatever steps are necessary to get your app
 
 The goal is to provide access to some quickly developed code-samples I put over a few days so as to facilitate discussion.
 
-* Quick summary
+* Quick summary *
     TO CASUAL VISITORS:
-    Please do not branch YET from this codebase as the code is CURRENTLY way 
-    too preliminary; it's is just a matter of a few days old (Sep/26/2014);
-    i.e., version 0.00b. 
+    1. Please do not branch YET from this codebase as the code is CURRENTLY way 
+       too preliminary; it's is just a matter of a few days old (Sep/26/2014);
+       i.e., version 0.00b. 
 
-    However, you are welcome to BROWSE at this time the codebase.
-    If you find it or a part useful and decide to recycle it, please 
-    follow accordance to the provided GNU license along with an URL
-    reference to this original codebase.
+    2. However, you are welcome to BROWSE at this time the codebase.
+       If you find it or a part useful and decide to recycle it, please 
+       follow accordance to the provided GNU license along with an URL
+       reference to the original [codebase] (https://bitbucket.org/nelsonmanohar/machinelearning)
 
-* Version
+* Version: *
     Again, just to be clear: version 0.001b.
 
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+* [Learn Markdown] *
+    (https://bitbucket.org/tutorials/markdowndemo)
 
 ### How do I get set up? ###
 
