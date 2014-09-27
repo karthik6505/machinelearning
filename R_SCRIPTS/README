@@ -3,15 +3,15 @@
 This README would normally document whatever steps are necessary to get your application up and running.
 
 
-* MOST IMPORTANT DIRECTORIES *
+### MOST IMPORTANT DIRECTORIES ###
     1. Main directory is R_SCRIPTS.
     2. Main directory is EMSEMBLE for PYTHON CLASSIFIER ANALYTICS
     3. Main directory is LINEAR_REGRESSION for PYTHON REGRESSION ANALYTICS
 
-R_ANALYTICS (R_SCRIPTS DIRECTORY):
-R analytics contain machine learning and predictive analytics in R
-for various general areas. Of course, these have not yet been optimized
-and thus are limited by your environment R's runtime limitations.
+### R_ANALYTICS (R_SCRIPTS DIRECTORY): ###
+    R analytics contain machine learning and predictive analytics in R
+    for various general areas. Of course, these have not yet been optimized
+    and thus are limited by your environment R's runtime limitations.
 
 #### 20K -rw-rw-r-- 1 nrm nrm 9.7K Sep 26 13:25 basket_rules.R ####
     Performs heuristic optimization via grid search for Market Basket Analysis 
