@@ -43,6 +43,7 @@ source( 'fselect.R' )
 source( 'datasets.R' )
 source( 'distances.R' )
 source( 'stochastic_gradient_descent.R' )
+source( 'basket_rules.R' )
 # ######################################################################################################
 
 
@@ -577,19 +578,21 @@ ANALYZE_SIMILAR_USER_FOR_MOVIE_RECOMMENDATIONS = function( USER1, NEARBY, nl=120
 # TODO: add weighted distance too, wrt ratings * distance, plot all points
 # ###################################################################################################
 WHICH_ONES_TO_RECOMMEND = function( USER1, USER2, SAME, MORE, D=matrix(), Z=matrix(), debug=FALSE ) {
-    retvals = list( 'RECOMMENDATION'=NA, 'RATINGS'=NA )
+
+    D_RETVALS = data.frame( 'BECAUSE_YOU_WATCHED'=NA, 'RECOMMENDATION'=NA, 'RATINGS'=NA, 'IDX'=matrix() )
 
     D3i = intersect(colnames(D),ID2M(SAME))
     D3j = intersect(colnames(D),ID2M(MORE))
     D3j = setdiff( D3j, D3i )
 
-    if ( length(D3i) == 0 ) return ( retvals )
-    if ( length(D3j) == 0 ) return ( retvals )
+    if ( length(D3i) == 0 ) return ( D_RETVALS )
+    if ( length(D3j) == 0 ) return ( D_RETVALS )
 
     D3 = D[D3i,D3j]
-    if (identical(D3, matrix())) return ( retvals ) 
+    if (identical(D3, matrix())) return ( D_RETVALS ) 
 
     MOVIE_DISTANCE_GOAL = 1.01 * min(D3) 
+
     D_RETVALS = WHICH_MOVIES_FROM_THIS_USER_ARE_CLOSE( USER2, D3, Z, MOVIE_DISTANCE_GOAL )
 
     if ( debug ) print ( D_RETVALS )
@@ -602,24 +605,46 @@ WHICH_ONES_TO_RECOMMEND = function( USER1, USER2, SAME, MORE, D=matrix(), Z=matr
 
 # ###################################################################################################
 WHICH_MOVIES_FROM_THIS_USER_ARE_CLOSE = function( USER2, D3, Z2, distance_goal, nmax=3, debug=FALSE ) { 
-    retvals = list( 'RECOMMENDATION'=NA, 'RATINGS'=NA, 'IDX'=NA )
+
+    RECOMMENDATIONS = data.frame( 'BECAUSE_YOU_WATCHED'=NA, 'RECOMMENDATION'=NA, 'RATINGS'=NA, 'IDX'=matrix() )
 
     min_inds = which(D3 <= distance_goal, arr.ind=TRUE)
-    if ( class(min_inds)  != "matrix" ) return ( retvals )
+    if ( class(min_inds)  != "matrix" ) 
+        return ( RECOMMENDATIONS )
+
+    START = TRUE
     for ( ix in 1:min(nrow( min_inds ),nmax) ) {
         U1_MOVIE = min_inds[ix,1]
         U2_MOVIE = min_inds[ix,2]
         U1_MOVIE = rownames(D3)[U1_MOVIE]
         U2_MOVIE = colnames(D3)[U2_MOVIE]
         RATING = ORIG_RATINGS[USER2, U2_MOVIE]
+
+        if ( START ) {
+            START = FALSE
+            RECOMMENDATIONS = data.frame( 'BECAUSE_YOU_WATCHED'=U1_MOVIE, 'RECOMMENDATION'=U2_MOVIE, 'RATINGS'=RATING, 'IDX'=min_inds[ix,] )
+        } else
+            RECOMMENDATIONS = rbind( RECOMMENDATIONS, 
+                              data.frame( 'BECAUSE_YOU_WATCHED'=U1_MOVIE, 'RECOMMENDATION'=U2_MOVIE, 'RATINGS'=RATING, 'IDX'=min_inds[ix,] ) )
+
         print( sprintf( "BECAUSE YOU LIKED %s: [%s]", U1_MOVIE, M[M2ID(U1_MOVIE),"movie_title"] ))
         print( sprintf( "   A MYSTEROUS CLOUD NOW RECOMMENDS YOU %s [%s stars]: [%s]", U2_MOVIE, RATING, M[M2ID(U2_MOVIE),"movie_title"] ))
         # DO_PCA_NEIGHBORING_PLOT( U1_MOVIE, U2_MOVIE, Z2, new_plot=FALSE, color="brown" )
  
     }
-    retvals = list( 'RECOMMENDATION'=U2_MOVIE, 'RATINGS'=RATING, 'IDX'=min_inds )
 
-    return (retvals )
+    return( RECOMMENDATIONS )
+}
+# ###################################################################################################
+
+
+# ###################################################################################################
+HOW_MANY_RECOMMENDATION_WERE_FOUND = function( RECOMMENDATIONS ) {
+    HOW_MANY = 0
+        if ( nrow(RECOMMENDATIONS) > 0 )
+            if ( !is.na(RECOMMENDATIONS[1,'RECOMMENDATION'] ))
+                HOW_MANY = nrow(RECOMMENDATIONS)
+    return( HOW_MANY )
 }
 # ###################################################################################################
 
@@ -642,7 +667,7 @@ FIND_ALTERNATIVE_RECOMMENDATION_WRT = function( USER1, CLOSEST, D1, Z1, D2, Z2, 
 
     SDS_RECOMMENDED_FOR_USER = WHICH_ONES_TO_RECOMMEND( USER1, SDS_CLOSEST, SDS_SAME, SDS_MORE, D=D2, Z=Z2 )
 
-    if( is.na(SDS_RECOMMENDED_FOR_USER$RECOMMENDATION ) )
+    if ( HOW_MANY_RECOMMENDATION_WERE_FOUND(SDS_RECOMMENDED_FOR_USER) == 0 )
         print( paste( "FOUND NO IMMEDIATE RECOMMENDATION EVEN FOR CLOSEST 2ND DEGREE", SDS_CLOSEST ) )
 
     return ( SDS_RECOMMENDED_FOR_USER  )
@@ -650,6 +675,15 @@ FIND_ALTERNATIVE_RECOMMENDATION_WRT = function( USER1, CLOSEST, D1, Z1, D2, Z2, 
 # ###################################################################################################
 
 
+# ###################################################################################################
+FIND_VALID_ORIG_RATED_MOVIES_FOR_THIS_USER = function( USERX, PIVOT=5 ) {
+    MOVIES_IDX = NA
+    HIGHLY_RATED = intersect(MOVIE_LABELS, names(which( ORIG_RATINGS[ USERX, ] >= PIVOT )))
+    if ( length(HIGHLY_RATED)==0 ) HIGHLY_RATED = intersect(MOVIE_LABELS, names(which( ORIG_RATINGS[ USERX, ] >= (PIVOT-1))))
+    if ( length(HIGHLY_RATED)!= 0 ) MOVIES_IDX = sample( HIGHLY_RATED, 1 )
+    return ( MOVIES_IDX )
+}
+# ###################################################################################################
 
 
 
@@ -841,11 +875,27 @@ NEWLINE(10)
             MORE = RETVALS$MORE
 
         RECOMMENDED_FOR_USER = WHICH_ONES_TO_RECOMMEND( COMPARISON_USER, CLOSEST, SAME, MORE, D=D2, Z=Z2 )
-            REC_TOPMOST = RECOMMENDED_FOR_USER$RECOMMENDATION 
-            REC_RATING  = RECOMMENDED_FOR_USER$RATING
-            if ( is.na(REC_TOPMOST) ) FIND_ALTERNATIVE_RECOMMENDATION_WRT( COMPARISON_USER, CLOSEST, D1, Z1, D2, Z2, RU2M )
+        if ( HOW_MANY_RECOMMENDATION_WERE_FOUND(RECOMMENDED_FOR_USER) == 0 )
+            FIND_ALTERNATIVE_RECOMMENDATION_WRT( COMPARISON_USER, CLOSEST, D1, Z1, D2, Z2, RU2M )
+        else {
+            REC_TOPMOST = RECOMMENDED_FOR_USER[1,'RECOMMENDATION'] 
+            REC_RATING  = RECOMMENDED_FOR_USER[1,'RATING']
+        }
+        METRICS = TIMESTAMP( paste('COLLAB.FILTERED RECOMMENDATIONS FOR', COMPARISON_USER) )
 
-        METRICS = TIMESTAMP( paste('GET_DIST1', COMPARISON_USER) )
+        cat(HEADER)
+        COMPARISON_USER_MOVIES = FIND_VALID_ORIG_RATED_MOVIES_FOR_THIS_USER( COMPARISON_USER )
+        if (!is.na(COMPARISON_USER_MOVIES))
+            BASKET_ANALYSIS_FINDINGS = APPLY_MARKET_BASKET_ASSOCIATON_ANALYSIS_WRT( RECOMMENDATIONS_FOR_U2M_RATINGS,
+                                                                                    COMPARISON_USER_MOVIES[1], 
+                                                                                    SUPPORT=0.40,
+                                                                                    CONF=0.65, 
+                                                                                    STEP=0.18,
+                                                                                    PIVOT=5,
+                                                                                    MIN_SUPPORT=5/nrow(RECOMMENDATIONS_FOR_U2M_RATINGS))
+
+        METRICS = TIMESTAMP( paste('MARKET BASKET RECOMMENDATIONS FOR', COMPARISON_USER) )
+
         cat(HEADER)
         cat(HEADER)
         cat(HEADER)
@@ -854,11 +904,6 @@ NEWLINE(10)
 
     # ###################################################################################################
 
-
-
-    # METRICS = TIMESTAMP( 'GET_DIST2' )
-    # ###################################################################################################
-    # print( METRICS )
 
  
 

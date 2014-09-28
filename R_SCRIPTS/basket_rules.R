@@ -30,63 +30,16 @@ message("")
 
 
 # ######################################################################################################
-# http://www.salemmarafi.com/code/collaborative-filtering-r/
-# ######################################################################################################
-
-# ######################################################################################################
-# Load the libraries
+require(stringr)
 library(arules)
 library(arulesViz)
-library(datasets)
 # ######################################################################################################
 
-
-# ######################################################################################################
-# Load the data set
-# data(Groceries)
-# ######################################################################################################
-
-
-# ######################################################################################################
-# Formal class 'rules' [package "arules"] with 4 slots
-#   ..@ lhs    :Formal class 'itemMatrix' [package "arules"] with 3 slots
-#   .. .. ..@ data       :Formal class 'ngCMatrix' [package "Matrix"] with 5 slots
-#   .. .. .. .. ..@ i       : int [1:526] 596 281 474 124 124 234 275 741 741 495 ...
-#   .. .. .. .. ..@ p       : int [1:378] 0 1 2 3 4 5 6 7 8 9 ...
-#   .. .. .. .. ..@ Dim     : int [1:2] 1682 377
-#   .. .. .. .. ..@ Dimnames:List of 2
-#   .. .. .. .. .. ..$ : NULL
-#   .. .. .. .. .. ..$ : NULL
-#   .. .. .. .. ..@ factors : list()
-#   .. .. ..@ itemInfo   :'data.frame':	1682 obs. of  1 variable:
-#   .. .. .. ..$ labels:Class 'AsIs'  chr [1:1682] "M1" "M2" "M3" "M4" ...
-#   .. .. ..@ itemsetInfo:'data.frame':	0 obs. of  0 variables
-#   ..@ rhs    :Formal class 'itemMatrix' [package "arules"] with 3 slots
-#   .. .. ..@ data       :Formal class 'ngCMatrix' [package "Matrix"] with 5 slots
-#   .. .. .. .. ..@ i       : int [1:377] 120 49 99 0 120 49 99 120 49 173 ...
-#   .. .. .. .. ..@ p       : int [1:378] 0 1 2 3 4 5 6 7 8 9 ...
-#   .. .. .. .. ..@ Dim     : int [1:2] 1682 377
-#   .. .. .. .. ..@ Dimnames:List of 2
-#   .. .. .. .. .. ..$ : NULL
-#   .. .. .. .. .. ..$ : NULL
-#   .. .. .. .. ..@ factors : list()
-#   .. .. ..@ itemInfo   :'data.frame':	1682 obs. of  1 variable:
-#   .. .. .. ..$ labels:Class 'AsIs'  chr [1:1682] "M1" "M2" "M3" "M4" ...
-#   .. .. ..@ itemsetInfo:'data.frame':	0 obs. of  0 variables
-#   ..@ quality:'data.frame':	377 obs. of  3 variables:
-#   .. ..$ support   : num [1:377] 0.207 0.203 0.229 0.209 0.21 ...
-#   .. ..$ confidence: num [1:377] 0.947 0.823 0.864 0.807 0.811 ...
-#   .. ..$ lift      : num [1:377] 2.08 1.33 1.6 1.68 1.78 ...
-#   ..@ info   :List of 4
-#   .. ..$ data         : symbol T
-#   .. ..$ ntransactions: int 943
-#   .. ..$ support      : num 0.2
-#   .. ..$ confidence   : num 0.8
-# ######################################################################################################
 
 # ##############################################################################################################
-library(arules)
 source( 'utilities.R' )
+# ##############################################################################################################
+
 
 # #####################################################################################
 TEST_ENABLED = TRUE
@@ -95,14 +48,13 @@ TEST_ENABLED = TRUE
     if ( V$'VALID'==TRUE & V$'FOUND'==TRUE ) 
         TEST_ENABLED = V$'ARGVAL'
 # #####################################################################################
-# ##############################################################################################################
+TEST_ENABLED = TRUE
 
 
 # ##############################################################################################################
 PRINT_RULESET = function( rules0, debug=FALSE ) {
     cat(HEADER)
     summary(rules0)
-    rules0<-sort(rules0, decreasing=TRUE,by="lift")
     inspect( rules0 )
     return
 }
@@ -110,7 +62,50 @@ PRINT_RULESET = function( rules0, debug=FALSE ) {
 
 
 # ##############################################################################################################
-FIND_RULES_FOR_THIS_ITEM = function( RR, ITEM, SUPPORT, CONF, STEP=1/3, MIN_SUPPORT=0.01, debug=FALSE, silent=FALSE ) {
+WHICH_ARE_SPECIFIC_RULES = function( rules, ITEM, QUALITY_LIFT_TRIGGER=4.0, debug=FALSE ) {  
+    lhs_set = c()
+
+    itemsets_lhs = as(attr(rules,"lhs"), "list" )
+    if ( length(itemsets_lhs)==0 ) 
+        return ( lhs_set )
+
+    for ( i in 1:length(itemsets_lhs)) {
+        lhs_item = itemsets_lhs[[i]][1]
+        if ( !is.na(lhs_item))
+            if ( str_detect(lhs_item, ITEM ) ) {
+                quality = as(attr(rules,"quality"), "list" )
+                lift = quality[[3]][i]
+                if ( as.numeric(lift) > QUALITY_LIFT_TRIGGER )
+                    lhs_set = append( lhs_set, lhs_item )
+            }
+    }
+
+    if ( debug ) {
+        cat(HEADER)
+        print( length(lhs_set) )
+    }
+
+    return ( lhs_set )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+ARE_SPECIFIC_RULES = function( new_rules, ITEM, debug=FALSE ) { 
+    retval = ifelse(length( WHICH_ARE_SPECIFIC_RULES( new_rules, ITEM )) == 0, FALSE, TRUE )
+    if ( debug ) {
+        cat(HEADER)
+        print( retval ) 
+    }
+    return ( retval )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+# http://www.salemmarafi.com/code/collaborative-filtering-r/
+# ##############################################################################################################
+FIND_RULES_FOR_THIS_ITEM = function( RR, ITEM, SUPPORT, CONF, STEP=1/3, MIN_SUPPORT=0.05, debug=FALSE, silent=FALSE ) {
     CONTINUE = TRUE
     FOUND_ONE= FALSE
 
@@ -118,9 +113,13 @@ FIND_RULES_FOR_THIS_ITEM = function( RR, ITEM, SUPPORT, CONF, STEP=1/3, MIN_SUPP
     while ( CONTINUE ) {
         new_rules = apriori(data=RR, parameter=list(supp=SUPPORT,conf = CONF), appearance = list(default="rhs", lhs=ITEM), control=list(verbose=FALSE)) 
 
-        if ( !FOUND_ONE & length( new_rules ) != 0 ) 
+        # inspect( new_rules )
+
+        ARE_SPECIFIC = ARE_SPECIFIC_RULES(new_rules, ITEM)
+
+        if ( !FOUND_ONE & ARE_SPECIFIC ) 
             FOUND_ONE=TRUE
-        if ( FOUND_ONE &  length( new_rules ) == 0 ) 
+        if ( FOUND_ONE &  !ARE_SPECIFIC )
             break
 
         if ( !FOUND_ONE ) 
@@ -133,14 +132,18 @@ FIND_RULES_FOR_THIS_ITEM = function( RR, ITEM, SUPPORT, CONF, STEP=1/3, MIN_SUPP
         if ( NEW_SUPPORT > 1 )
             break
 
-        if ( debug ) print( paste( "FOUND=", FOUND_ONE, "SUPPORT=", SUPPORT, "CONTINUE=", CONTINUE, length(new_rules) ))
+        if ( debug ) print( paste( "FOUND=", FOUND_ONE, 
+                                   "SUPPORT=", SUPPORT, 
+                                   'ARE_SPECIFIC=', ARE_SPECIFIC, 
+                                   "CONTINUE=", CONTINUE, 
+                                   length(new_rules) ))
 
         rules   = new_rules
         SUPPORT = NEW_SUPPORT
     }
 
     # see if confidence can be increased while retaining some knowledge about item
-    while ( length(rules) > 0 ) {
+    while ( ARE_SPECIFIC_RULES(rules, ITEM) ) {
         if ( debug ) print( paste( "FOUND=", FOUND_ONE, "SUPPORT=", SUPPORT, "CONTINUE=", CONTINUE, "CONF=", CONF, length(rules) ))
 
         CONF = (1+STEP) * CONF
@@ -148,12 +151,15 @@ FIND_RULES_FOR_THIS_ITEM = function( RR, ITEM, SUPPORT, CONF, STEP=1/3, MIN_SUPP
             break
 
         new_rules = apriori(data=RR, parameter=list(supp=SUPPORT,conf = CONF), appearance = list(default="rhs", lhs=ITEM), control=list(verbose=FALSE) )
-        if ( length(new_rules) == 0 ) 
+        if ( ARE_SPECIFIC_RULES(new_rules, ITEM) )
             break
 
         rules    = new_rules
     }
 
+    if(debug) print(paste("FOUND=",FOUND_ONE,"SUPPORT=",SUPPORT,"CONTINUE=",CONTINUE,"CONF=",CONF,
+                          'TOTAL=',length(rules),'SPECIFIC=',WHICH_ARE_SPECIFIC_RULES(rules,ITEM)))
+    
     if ( !silent ) PRINT_RULESET( rules )
 
     return ( rules )
@@ -162,58 +168,70 @@ FIND_RULES_FOR_THIS_ITEM = function( RR, ITEM, SUPPORT, CONF, STEP=1/3, MIN_SUPP
 
 
 # ##############################################################################################################
-PRINT_FINDINGS = function( findings ) {
-    itemsets_rhs = as(attr(findings,"rhs"), "list" )
-    quality = as(attr(findings,"quality"), "list" )
-    nmax = min(3,length(itemsets_rhs))
-    for ( i in 1:nmax) {
-        M2_MOVIE = itemsets_rhs[[i]][1]
-        M2 = M2ID( M2_MOVIE )
-        support = quality[[1]][i]
-        confidence = quality[[2]][i]
-        lift    = quality[[3]][i]
-        print( sprintf( "%5s-->%5s: [%5.2f, %5.2f, %5.2f] %s", MOVIE, M2_MOVIE,
-                       support, confidence, lift,
-                       as.character(M[M2,'movie_title'] )))
+PRINT_FINDINGS = function( MOVIE, mba_findings, nmax=5 ) {
+    if( !ARE_SPECIFIC_RULES(mba_findings, MOVIE) ) return
+
+    mba_findings <-sort(mba_findings , decreasing=TRUE, by="lift")
+    itemsets_rhs = as(attr(mba_findings,"rhs"), "list" )
+    nmax = min(nmax,length(itemsets_rhs))
+
+    if ( nmax != 0 ) {
+        print( sprintf( "[MBA]: OTHER CUSTOMERS WHO LIKED THIS OTHER MOVIE %s: [%s]", MOVIE, M[M2ID(MOVIE),"movie_title"] ))
+        print( sprintf( "   ALSO CHECKED OUT THESE OTHER %s TITLES:", nmax) )
+        quality      = as(attr(mba_findings,"quality"), "list" )
+        for ( i in 1:nmax) {
+            M2_MOVIE = itemsets_rhs[[i]][1]
+            M2 = M2ID( M2_MOVIE )
+
+            support    = quality[[1]][i]
+            confidence = quality[[2]][i]
+            lift       = quality[[3]][i]
+
+            RATING  = mean(ORIG_RATINGS[,M2_MOVIE], na.rm=TRUE)
+
+            print( sprintf( "   %5s-->%5s [%.1f stars]: [%5.2f, %5.2f, %5.2f] %s", MOVIE, M2_MOVIE, RATING, support, confidence, lift, as.character(M[M2,'movie_title'] )))
+        }
     }
+
+    return ( nmax )
 }
 # ##############################################################################################################
 
 
 # ##############################################################################################################
-APPLY_MARKET_BASKET_ASSOCIATON_ANALYSIS_WRT = function( RR, MOVIE, SUPPORT=0.1, CONF=0.51, STEP=0.10, MIN_SUPPORT=0.01 ) { 
+APPLY_MARKET_BASKET_ASSOCIATON_ANALYSIS_WRT = function( RR, ITEM, SUPPORT=0.1, CONF=0.51, STEP=0.10, PIVOT=5, MIN_SUPPORT=0.05, debug=FALSE ) { 
+    t0 = proc.time()
     RR = ifelse( is.na(RR), 0, RR )
-    RR = ifelse( RR<5,   0, RR )
-    RR = ifelse( RR<3.5, 0, 1 )
+    RR = ifelse( RR<PIVOT, 0, 1 )
 
-    M1 = M2ID( MOVIE )
-    print( paste( MOVIE, as.character(M[M1,'movie_title'] )))
+    M1 = M2ID( ITEM )
+    if ( debug ) print( paste( ITEM, as.character(M[M1,'movie_title'] )))
 
-    findings = FIND_RULES_FOR_THIS_ITEM( RR, MOVIE, SUPPORT, CONF, STEP, MIN_SUPPORT, silent=TRUE )
+    mba_findings = FIND_RULES_FOR_THIS_ITEM( RR, ITEM, SUPPORT, CONF, STEP, MIN_SUPPORT, debug=FALSE, silent=TRUE )
 
-    PRINT_FINDINGS( findings )
+    PRINT_FINDINGS( ITEM, mba_findings )
 
-    return ( findings )
+    if (debug) print( proc.time() - t0 )
+
+    return ( mba_findings )
 }
 # ##############################################################################################################
 
 
 # ##############################################################################################################
-if ( TRUE )
-    for ( MOVIE in sample(MOVIE_LABELS,400) ) {
+NUM_MOVIES=200
+if ( TEST_ENABLED )
+    for ( MOVIE in sample(MOVIE_LABELS, NUM_MOVIES) ) {
         cat(HEADER)
         R4R = RECOMMENDATIONS_FOR_U2M_RATINGS
         findings = APPLY_MARKET_BASKET_ASSOCIATON_ANALYSIS_WRT( R4R, 
                                                                 MOVIE, 
-                                                                SUPPORT=0.1,
-                                                                CONF=0.51, 
-                                                                STEP=0.10, 
-                                                                MIN_SUPPORT=2/nrow(R4R) )
-        cat(HEADER)
-        cat(HEADER)
-        cat(HEADER)
+                                                                SUPPORT=0.33,
+                                                                CONF=0.80, 
+                                                                STEP=0.33, 
+                                                                PIVOT=4,
+                                                                MIN_SUPPORT=5/nrow(R4R) )
         NEWLINE(3)
-        # plot(findings, method="graph",interactive=FALSE)
     }
 # ##############################################################################################################
 
