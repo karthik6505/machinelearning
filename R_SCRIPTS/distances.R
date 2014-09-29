@@ -244,8 +244,8 @@ FIND_NEIGHBORING_POINTS = function( X, ix, D=matrix(), PCA=matrix(), new_plot=FA
 # ###################################################################################################
 DO_PCA_FULL_PLOT = function( Z, nmax=0, pch="+", ... ) {
     zp = as.matrix(Z)
-    if ( nmax== 0 )   nmax = nrow(Z)
-    if ( nmax > 2E3 ) nmax = min(1E4, nrow(Z))
+    if ( nmax== 0 ) nmax = nrow(Z)
+    nmax = min(nmax, 5E3, nrow(Z))
     sampled_rows = sample(rownames(Z),nmax)
     plot(x=as.matrix(Z[,1]), y=as.matrix(Z[,2]), ... )
 }
@@ -258,17 +258,23 @@ DO_PCA_NEIGHBORING_PLOT = function( i, min_ij_idx, Z, new_plot=FALSE, color="gre
         dx= Z[i,1]/20  * rnorm(1,1,2)
         dy= Z[i,2]/20  * rnorm(1,1,2)
 
-        if ( new_plot ) {
-            points( x=Z[i,1], y=Z[i,2], col="blue", bg="blue", pch=24,  cex=0.7 )
+        x0 = Z[i,1]
+        y0 = Z[i,2]
+        x1 = Z[min_ij_idx,1]
+        y1 = Z[min_ij_idx,2]
 
+        segments( x0, y0, x1=x1, y1=y1, col=color, lwd=2 )
+
+        if ( new_plot ) {
             x1lab = paste( "WRT:", i )
-            text( x=Z[i,1]+dx, y=Z[i,2], x1lab, col="blue", cex=0.7 )
+            points( x=x0, y=y0, col="blue", bg="blue", pch=24,  cex=0.7 )   # points( x=Z[i,1], y=Z[i,2], col="blue", bg="blue", pch=24,  cex=0.7 )
+            text( x=x0+dx, y=y0, x1lab, col="blue", cex=0.4 )               # text( x=Z[i,1]+dx, y=Z[i,2], x1lab, col="blue", cex=0.7 )
         }
 
-        points( x=Z[min_ij_idx,1],  y=Z[min_ij_idx,2], col=color, bg=color, pch=23, cex=0.7 )
-
         x2lab = paste( "MIN=", min_ij_idx )
-        text( x=Z[min_ij_idx,1]+dx, y=Z[min_ij_idx,2], x2lab, col=color, cex=0.7 )
+        points( x=x1, y=y1, col=color, bg=color, pch=23, cex=0.7 )          # points( x=Z[min_ij_idx,1], y=Z[min_ij_idx,2], col=color, bg=color, pch=23, cex=0.7 )
+        text( x=x1+dx, y=y1, x2lab, col=color, cex=0.4 )                    # text( x=Z[min_ij_idx,1]+dx, y=Z[min_ij_idx,2], x2lab, col=color, cex=0.7 )
+
     }
 }
 # ###################################################################################################

@@ -187,6 +187,14 @@ PRINT_FINDINGS = function( MOVIE, mba_findings, nmax=5 ) {
 
             RATING  = mean(ORIG_RATINGS[,M2_MOVIE], na.rm=TRUE)
 
+            if ( TRUE ) {
+                x0 = Z2[MOVIE,1]
+                y0 = Z2[MOVIE,2]
+                x1 = Z2[M2_MOVIE,1]
+                y1 = Z2[M2_MOVIE,2]
+                segments( x0, y0, x1=x1, y1=y1, col="red", lwd=2 )
+            }
+
             print( sprintf( "   %5s-->%5s [%.1f stars]: [%5.2f, %5.2f, %5.2f] %s", MOVIE, M2_MOVIE, RATING, support, confidence, lift, as.character(M[M2,'movie_title'] )))
         }
     }
@@ -197,7 +205,10 @@ PRINT_FINDINGS = function( MOVIE, mba_findings, nmax=5 ) {
 
 
 # ##############################################################################################################
-APPLY_MARKET_BASKET_ASSOCIATON_ANALYSIS_WRT = function( RR, ITEM, SUPPORT=0.1, CONF=0.51, STEP=0.10, PIVOT=5, MIN_SUPPORT=0.05, debug=FALSE ) { 
+APPLY_MARKET_BASKET_ASSOCIATON_ANALYSIS_WRT = function( RR, ITEM, SUPPORT=0.1, CONF=0.51, 
+                                                        STEP=0.10, PIVOT=5, MIN_SUPPORT=0.05, 
+                                                        debug=FALSE ) { 
+
     t0 = proc.time()
     RR = ifelse( is.na(RR), 0, RR )
     RR = ifelse( RR<PIVOT, 0, 1 )

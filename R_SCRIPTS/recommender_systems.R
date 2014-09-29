@@ -108,12 +108,12 @@ GET_XY_FOR_GENRE_AS_X_AND_USER_RATING_AS_Y = function( ORIG_RATINGS, NUSERS=100,
 
         X  = MOVIES[WHICH_MOVIES, c(1,6:ncol(M))] 
         MU = matrix(apply(M2U,1,mean,na.rm=TRUE))
-        SD = matrix(apply(M2U,1,sd,na.rm=TRUE))  
+        SD = matrix(apply(M2U,1,sd,  na.rm=TRUE))  
         SD = ifelse( is.na(SD), 0, SD )
 
-        if ( TRUE ) {
-            MU = MU / mean(MU,na.rm=TRUE)
-            SD = SD / mean(SD,na.rm=TRUE)
+        if ( FALSE ) {
+            MU = MU + mean(MU,na.rm=TRUE)
+            SD = SD + mean(SD,na.rm=TRUE)
         }
 
         # ###########################################################################
@@ -124,7 +124,10 @@ GET_XY_FOR_GENRE_AS_X_AND_USER_RATING_AS_Y = function( ORIG_RATINGS, NUSERS=100,
         NX = data.frame( "rating_mean"=MU, "rating_dev"=SD )
         for( i in 2:ncol(X)) {
             Xi = matrix(X[,i])
-            Xi = Xi * ( MU + SD )
+
+            if ( TRUE ) 
+                Xi = Xi * ( MU+SD )/MU
+
             NX = cbind( NX, Xi )
         }
         # colnames(NX) = c( "movie_id", "rating_mean", "rating_dev", colnames(MOVIES[c(6:ncol(M))]))
@@ -160,6 +163,7 @@ GET_XY_FOR_USER_PREFERENCES_FOR_GENRE_MATRIX = function( X_GEN, Y_M2U, regparam=
     GENRE_COLS = c(1:ncol(X_GEN))
     N_GENRE = length(GENRE_COLS)
     N_USERS = ncol(Y_M2U)
+    DEFAULT_THETA = as.matrix(rep(0.0, length(GENRE_COLS)))         # colnames(DEFAULT_THETA)=c("theta")
 
     if ( w_intercept )
         PREFERENCES = matrix(rep(NA, N_USERS*(N_GENRE+1)), N_USERS)
@@ -173,6 +177,7 @@ GET_XY_FOR_USER_PREFERENCES_FOR_GENRE_MATRIX = function( X_GEN, Y_M2U, regparam=
         idx = SUBSELECT_THOSE_REVIEWED_BY_USER( X_GEN, Y_M2U[,USER] )
         if ( length(idx) <= DROP_TRIGGER ) { 
             DROP = append(DROP, USER)
+            PREFERENCES[ USER, ] = DEFAULT_THETA
             next 
         }
 
@@ -249,16 +254,16 @@ GET_XY_FOR_PREFERENCES_AS_X_AND_USER_RATING_AS_Y = function( X_GEN, Y_U2M, regpa
 
 
 # ###################################################################################################
-DO_PLOTTING_ITERATION = function( L_PREFERENCES, L_MOVIEGEN_FEATURES, xval=4 ) {
+DO_PLOTTING_ITERATION = function( L_PREFERENCES, L_MOVIEGEN_FEATURES, xval=PCA_PLOT_LIMITS ) {
     XYZ0 = L_PREFERENCES [complete.cases(L_PREFERENCES ),]
         Z = DO_PCA( XYZ0, silent=TRUE, debug=FALSE )$Z
         plot( Z[,1], Z[,2], pch=".", cex=0.4, xlim=c(-(xval+1),xval+1), ylim=c(-(xval+1),xval+1) )
-        text( Z[,1], Z[,2], rownames(XYZ0), col='blue', cex=0.3 )
+        text( Z[,1], Z[,2], rownames(XYZ0), col='blue', cex=0.4 )
 
     XYZ1 = L_MOVIEGEN_FEATURES[complete.cases(L_MOVIEGEN_FEATURES),]
         Z = DO_PCA( XYZ1, silent=TRUE, debug=FALSE )$Z
         plot( Z[,1], Z[,2], pch=".", cex=0.4, xlim=c(-xval,xval), ylim=c(-xval,xval) )
-        text( Z[,1], Z[,2], rownames(XYZ1), col='brown', cex=0.3 )
+        text( Z[,1], Z[,2], rownames(XYZ1), col='brown', cex=0.4 )
 
     retvals = list ( XYZ0, XYZ1 )
 
@@ -268,13 +273,13 @@ DO_PLOTTING_ITERATION = function( L_PREFERENCES, L_MOVIEGEN_FEATURES, xval=4 ) {
 
 
 # ###################################################################################################
-DO_ANALYSIS_DIFFERENCES_BETWEEN_COEFFICIENTS = function( PREFERENCES2, PREFERENCES1, ptitle="PREFERENCES DIFF" )  {
-    PREFERENCES_DIFF   = PREFERENCES2  -  PREFERENCES1
+DO_ANALYSIS_DIFFERENCES_BETWEEN_COEFFICIENTS = function( PREFERENCES_2, PREFERENCES_1, ptitle="PREFERENCES DIFF" )  {
+    PREFERENCES_DIFF   = PREFERENCES_2  -  PREFERENCES_1
     PREFERENCES_DIFF   = PREFERENCES_DIFF[complete.cases(PREFERENCES_DIFF),]
     P_TS = apply( PREFERENCES_DIFF, 1, function(x) { t = t(x)%*%x ; ifelse(is.na(t),0,t)} )
     DO_HIST(P_TS, nbins=64, ptitle=ptitle)
-    P_MSE = as.numeric( t(P_TS) %*% P_TS ) / length(P_TS) 
-    return ( P_MSE )
+    T_MSE = as.numeric( t(P_TS) %*% P_TS ) / length(P_TS) 
+    return ( T_MSE )
 }
 # ###################################################################################################
 
@@ -286,6 +291,7 @@ DO_ANALYSIS_DIFFERENCES_BETWEEN_COEFFICIENTS = function( PREFERENCES2, PREFERENC
 # GEN_RATINGS : GIVEN USER PREFERENCES AS PREDICTORS OF X_GEN VALUES AS THETA VECTORS
 # ###################################################################################################
 DO_ITERATIVE_CONVERGENCE_FOR_RECOMMENDATION_PARAMETERS = function( ORIG_RATINGS, NUSERS=1000, NMOVIES=2000, debug=FALSE ) {
+
     NEWLINE(3); cat( HEADER )
     GENRE_RETVALS = GET_XY_FOR_GENRE_AS_X_AND_USER_RATING_AS_Y( ORIG_RATINGS, NUSERS=NUSERS, NMOVIES=NMOVIES, debug=debug )
     X_GEN = GENRE_RETVALS$X
@@ -293,8 +299,8 @@ DO_ITERATIVE_CONVERGENCE_FOR_RECOMMENDATION_PARAMETERS = function( ORIG_RATINGS,
     WHICH_USERS  <<- GENRE_RETVALS$WHICH_USERS
     WHICH_MOVIES <<- GENRE_RETVALS$WHICH_MOVIES
 
-    X_GEN = scale( X_GEN, center=FALSE, scale=FALSE)
-    Y_M2U = scale( Y_M2U, center=TRUE,  scale=FALSE)
+    X_GEN = scale( X_GEN, center=FALSE,  scale=FALSE)
+    Y_M2U = scale( Y_M2U, center=TRUE,   scale=FALSE)
 
     if ( debug ) {
         NEWLINE(3)
@@ -317,17 +323,16 @@ DO_ITERATIVE_CONVERGENCE_FOR_RECOMMENDATION_PARAMETERS = function( ORIG_RATINGS,
     # ###################################################################################################
 
     # ###################################################################################################
-    op = par( mfrow=c(3,2) )
-    if ( DO_PDF ) pdf( 'coefficient_convergence.pdf' )
-    print( "PDF FILE contains plots tracing the convergence of coefficients: coefficients_convergence.pdf" )
-    op = par( mfrow=c(3,2) )
-
-    MSE = data.frame( "GEN"=0, "P_MSE"=Inf, "M_MSE"=Inf )
-    WHY = "MAXIMUM NUMBER OF ITERATIONS EXCEEDED"
-    # ###################################################################################################
     # THIS IMPLEMENTS ITERATIVE CONVERGENCE WHICH IS A LOT SLOWER THAN TO DO IT ALL AT ONCE BUT ALLOWS
     # ACCESS TO EACH ITERATION OF THE CONVERGENCE TO PLOT THINGS SUCH AS COEFFICIENT TRAVERSAL AND STABILITY
     # ###################################################################################################
+    if ( DO_PDF ) pdf( 'plot_coefficient_convergence_collabfilt.pdf' )
+    print( "PDF FILE contains plots tracing the convergence of coefficients: plot_coefficient_convergence_collabfilt.pdf" )
+    op = par( mfrow=c(3,2) )
+
+    ITERATIVE_MSE = data.frame( "GEN"=0, "P_MSE"=NA, "M_MSE"=NA )
+
+    WHY = "MAXIMUM NUMBER OF ITERATIONS EXCEEDED"
     for( iter in 2:N_ITER ) {
         PREFERENCES1       = GET_XY_FOR_USER_PREFERENCES_FOR_GENRE_MATRIX( MOVIEGEN_FEATURES2, Y_M2U, regparam=REGPARAM, debug=FALSE )
         MOVIEGEN_FEATURES1 = GET_XY_FOR_PREFERENCES_AS_X_AND_USER_RATING_AS_Y( PREFERENCES2,   Y_U2M )
@@ -341,17 +346,22 @@ DO_ITERATIVE_CONVERGENCE_FOR_RECOMMENDATION_PARAMETERS = function( ORIG_RATINGS,
         P_MSE = DO_ANALYSIS_DIFFERENCES_BETWEEN_COEFFICIENTS( PREFERENCES2,       PREFERENCES1,       ptitle="PREFERENCES DIFF" )
         M_MSE = DO_ANALYSIS_DIFFERENCES_BETWEEN_COEFFICIENTS( MOVIEGEN_FEATURES2, MOVIEGEN_FEATURES1, ptitle="MOVIEGEN_DIFF" )
 
-        MSE = rbind( MSE, data.frame( "GEN"=i, "P_MSE"=P_MSE, "M_MSE"=M_MSE ))
-        print( sprintf( "ITERATION=%4d MSE(COEFF_DIFF BETWEEN GEN) P=%16.8g M=%16.8g", iter, P_MSE, M_MSE ) )
+        ITERATIVE_MSE = rbind( ITERATIVE_MSE, data.frame( "GEN"=iter, "P_MSE"=P_MSE, "M_MSE"=M_MSE ))
+        print( sprintf( "ITERATION=%4s MSE(COEFF_DIFF BETWEEN GENERATIONS) P=%16.8g   M=%16.8g", iter, P_MSE, M_MSE ) )
 
-        idx = c(1:nrow(MSE))
-        if ( nrow(MSE) > 3 ) idx = c( (nrow(MSE)-3) : nrow(MSE))
-        MEAN_P_MSE = mean(MSE$P_MSE[idx])
-        MEAN_M_MSE = mean(MSE$M_MSE[idx])
+        idx = c(1:nrow(ITERATIVE_MSE))
+        if ( nrow(ITERATIVE_MSE) > 5 ) 
+            idx = c( (nrow(ITERATIVE_MSE)-3) : nrow(ITERATIVE_MSE))
+
+        print ( ITERATIVE_MSE )
+
+        MEAN_P_MSE = mean(ITERATIVE_MSE$P_MSE[idx], na.rm=TRUE)
+        MEAN_M_MSE = mean(ITERATIVE_MSE$M_MSE[idx], na.rm=TRUE)
 
         METRICS <<- TIMESTAMP( paste( "CONVERGENCE_ITERATION", iter ) )
 
-        if ( P_MSE<EPSILON  & M_MSE<EPSILON ) {                 
+        if ( P_MSE < EPSILON  & 
+             M_MSE < EPSILON ) {                 
             cat(HEADER)
             WHY = "STABILITY TERMINATION CONDITION REACHED"
             if ( MEAN_P_MSE<EPSILON  & MEAN_M_MSE<EPSILON ) WHY = "STRONG STABILITY TERMINATION CONDITION REACHED"
@@ -362,13 +372,11 @@ DO_ITERATIVE_CONVERGENCE_FOR_RECOMMENDATION_PARAMETERS = function( ORIG_RATINGS,
             break 
         }
     }
-    # ###################################################################################################
     if ( DO_PDF ) { dev.off() ; graphics.off() }
-    # ###################################################################################################
 
     ITER_RETVALS = list( 'PREFERENCES'=PREFERENCES2, 
                          'MOVIEGEN_FEATURES'=MOVIEGEN_FEATURES2,
-                         'MSE_STATS'=MSE,
+                         'MSE_STATS'=ITERATIVE_MSE,
                          'Y_M2U'=Y_M2U,
                          'WHY'=WHY )
 
@@ -403,7 +411,9 @@ GENERATE_LOW_RANK = function( USER_PREFERENCES, MOVIE_FEATURES, NA_RM=TRUE ) {
 # ###################################################################################################
 # COLLABORATIVELY-FILTERED RATING GENERATION FOR USERS RATINGS AND MOVIE RATING-PREDICTIVE FEATURES
 # ###################################################################################################
-GENERATE_COLLABORATIVE_FILTERED_RATINGS = function( WHICH_RATINGS, USER_PREFERENCES, MOVIE_FEATURES, USER_MEAN_NORMALIZATIONS, sample_n=200, debug=TRUE ) {
+GENERATE_COLLABORATIVE_FILTERED_RATINGS = function( WHICH_RATINGS, 
+                                                    USER_PREFERENCES, MOVIE_FEATURES, USER_MEAN_NORMALIZATIONS, 
+                                                    sample_n=200, nl=100, debug=TRUE ) {
 
     NORMALIZED_PREDICTIONS = GENERATE_LOW_RANK( USER_PREFERENCES, MOVIE_FEATURES )
 
@@ -424,10 +434,6 @@ GENERATE_COLLABORATIVE_FILTERED_RATINGS = function( WHICH_RATINGS, USER_PREFEREN
 
         print( sprintf( "%s : [%4d w/ selected ratings] : %s ", MOVIE, length(u_idxs), as.character(M[M2ID(MOVIE),"movie_title"]) )) 
 
-        SUMMARY(RECOMMENDATIONS_FOR_U2M_RATINGS[,MOVIE])
-
-        SUMMARY(WHICH_RATINGS[,MOVIE])
-
         SAMPLED_RECM = sprintf("%s[%.0f:%s]", r_idxs, 
                                      RECOMMENDATIONS_FOR_U2M_RATINGS[r_idxs, MOVIE], WHICH_RATINGS[r_idxs, MOVIE])
 
@@ -435,22 +441,41 @@ GENERATE_COLLABORATIVE_FILTERED_RATINGS = function( WHICH_RATINGS, USER_PREFEREN
                                      RECOMMENDATIONS_FOR_U2M_RATINGS[u_idxs, MOVIE], WHICH_RATINGS[u_idxs, MOVIE])
 
         FIT_MSE = NA
-        if ( length(u_idxs) ) FIT_MSE = sum(RECOMMENDATIONS_FOR_U2M_RATINGS[u_idxs,MOVIE] - WHICH_RATINGS[u_idxs,MOVIE])^2 / length(u_idxs)
+        if ( length(u_idxs) ) 
+            FIT_MSE = sum(RECOMMENDATIONS_FOR_U2M_RATINGS[u_idxs,MOVIE] - WHICH_RATINGS[u_idxs,MOVIE])^2 / length(u_idxs)
         MSE = append( MSE, FIT_MSE )
 
+        if ( !is.na( FIT_MSE ) )
+            if ( FIT_MSE > 1 ) {
+                SUMMARY(RECOMMENDATIONS_FOR_U2M_RATINGS[,MOVIE])
+                SUMMARY(WHICH_RATINGS[,MOVIE])
+            }
+
         cat(SUBHEADER)
-        print( paste( "SAMPLE RECOMMENDATIONS  : ", CONCAT(SAMPLED_RECM) ))
-        print( paste( "AVAILABLE USER FITS     : ", CONCAT(SAMPLED_FITS) ))
+        print( paste( "REGRESSION FITS WRT USER: ", substr(CONCAT(SAMPLED_FITS),1,nl) ))
+        print( paste( "SAMPLE RECOMMENDATIONS  : ", substr(CONCAT(SAMPLED_RECM),1,nl) ))
         print( paste( "MSE (WRT GIVEN MOVIE)   :  ", round(FIT_MSE,6) ))
         cat(HEADER)
 
         NEWLINE(1)
     }
+    names(MSE) = colnames(USER_TO_MOVIE_RATINGS)
+    CUMSUM_MSE = cumsum(ifelse(is.na(MSE),0,MSE))
+    ITERATION_BASED_BUILDUP_OF_MEAN_MSE =  CUMSUM_MSE/1:length(MSE)
 
     cat(HEADER)
     try( print(sprintf(" AVG(PER-MOVIE MSE) = %.6f", mean(MSE, na.rm=TRUE))))
     try( print(sprintf(" SD (PER-MOVIE MSE) = %.6f", sd(MSE,   na.rm=TRUE))))
     cat(HEADER)
+
+    pdf('plot_accumulative_mse_progression_collabfilt.pdf', 12, 8)
+    print( "PDF FILE contains plots tracing accumulation of MSE error for known labels wrt recommendations generated: plot_accumulative_mse_progression_collabfilt.pdf" )
+    par(mfrow=c(2,2))
+        barplot( ifelse(is.na(MSE),0,MSE), cex=0.4, cex.axis=0.3, main="MSE INCREASE PER MOVIE",  las=2 )
+        hist( MSE, breaks=32, main="FREQ. OF MAGNITUDE OF MSE INCREASE" )
+        plot( CUMSUM_MSE, cex=0.6, cex.axis=0.4, pch="+", main="ACCUM. MSE PROGRESSION",  las=2 )
+        plot( ITERATION_BASED_BUILDUP_OF_MEAN_MSE, pch="+", cex=0.6, cex.axis=0.4, main="AVG MSE BUILDUP AT K-TH MOVIE",  las=2 )
+    dev.off()
 
     return (RECOMMENDATIONS_FOR_U2M_RATINGS)
 }
@@ -652,7 +677,7 @@ HOW_MANY_RECOMMENDATION_WERE_FOUND = function( RECOMMENDATIONS ) {
 # ###################################################################################################
 # We could also try other neighbors in NEARBY to find a recommendation
 # ###################################################################################################
-FIND_ALTERNATIVE_RECOMMENDATION_WRT = function( USER1, CLOSEST, D1, Z1, D2, Z2, RU2M ) {
+FIND_ALTERNATIVE_RECOMMENDATION_WRT = function( USER1, CLOSEST ) { # , D1, Z1, D2, Z2, RU2M ) {
 
     SDS = FIND_NEIGHBORING_POINTS( RU2M, CLOSEST, D=D1, PCA=Z1, color="blue", new_plot=FALSE)
 
@@ -686,55 +711,227 @@ FIND_VALID_ORIG_RATED_MOVIES_FOR_THIS_USER = function( USERX, PIVOT=5 ) {
 # ###################################################################################################
 
 
+# ###################################################################################################
+DO_USER_RECOMMENDATION = function( COMPARISON_USER ) { # RU2M, D1, D2, Z1, Z2 )  {
+    SIMILAR_USERS_RETVALS = IDENTIFY_SIMILAR_USERS( COMPARISON_USER, RECOMMENDATIONS_FOR_U2M_RATINGS, D=D1, Z=Z1 )
+        NEARBY  = SIMILAR_USERS_RETVALS$NEIGHBORS$nearby   
+        CLOSEST = SIMILAR_USERS_RETVALS$NEIGHBORS$closest
+
+    ANALYSIS_CLOSEST_RETVALS = ANALYZE_SIMILAR_USER_FOR_MOVIE_RECOMMENDATIONS( COMPARISON_USER, CLOSEST )
+        SAME = ANALYSIS_CLOSEST_RETVALS$SAME
+        MORE = ANALYSIS_CLOSEST_RETVALS$MORE
+
+    RECOMMENDED_FOR_USER = WHICH_ONES_TO_RECOMMEND( COMPARISON_USER, CLOSEST, SAME, MORE, D=D2, Z=Z2 )
+
+    if ( HOW_MANY_RECOMMENDATION_WERE_FOUND(RECOMMENDED_FOR_USER) == 0 )
+        RECOMMENDED_FOR_USER = FIND_ALTERNATIVE_RECOMMENDATION_WRT( COMPARISON_USER, CLOSEST ) # , D1, Z1, D2, Z2, RECOMMENDATIONS_FOR_U2M_RATING)
+    else {
+        REC_TOPMOST = RECOMMENDED_FOR_USER[1,'RECOMMENDATION'] 
+        REC_RATING  = RECOMMENDED_FOR_USER[1,'RATING']
+    }
+
+    METRICS = TIMESTAMP( paste('COLLAB.FILTERED RECOMMENDATIONS FOR', COMPARISON_USER) )
+
+    UREC_RETVALS = list( 'USER'=COMPARISON_USER,
+                         'CLOSEST'=CLOSEST,
+                         'SIMILAR_USERS'=SIMILAR_USERS_RETVALS, 
+                         'ANALYSIS_OF_CLOSEST'=ANALYSIS_CLOSEST_RETVALS,
+                         'USER_RECOMMENDATIONS'=RECOMMENDED_FOR_USER )
+
+    return ( UREC_RETVALS )
+}
+# ###################################################################################################
 
 
+# ###################################################################################################
+DO_BASKET_ANALYSYS_BASED_RECOMMENDATION_FOR = function( MOVIE ) {  
+    BASKET_ANALYSIS_FINDINGS = APPLY_MARKET_BASKET_ASSOCIATON_ANALYSIS_WRT( RECOMMENDATIONS_FOR_U2M_RATINGS,
+                                                MOVIE,
+                                                SUPPORT=0.50,
+                                                CONF=0.65, 
+                                                STEP=0.20,
+                                                PIVOT=5,
+                                                MIN_SUPPORT=5/nrow(RECOMMENDATIONS_FOR_U2M_RATINGS))
+    return ( BASKET_ANALYSIS_FINDINGS ) 
+}
+# ###################################################################################################
 
-    # ###################################################################################################
-    # JRETVALS = BUILD_JESTER_DATASET()
-    # J = as.data.frame(JRETVALS$J)
-    # AGG_J = aggregate( J$AVG ~ as.factor(J$NR), J, mean )
-    # ###################################################################################################
+
+# ###################################################################################################
+# TODO, DO NEIGHBOR ANALYSIS FOR CLOSEST MOVIE TO AN SPECIFIED MOVIE
+# ###################################################################################################
+DO_MOVIE_RECOMMENDATION = function( COMPARISON_USER, ATTEMPT_BASKET_ANALYSIS_STYLE_RECOMMENDATION=FALSE ) {
+    BASKET_ANALYSIS_FINDINGS = matrix() 
+
+    if ( ATTEMPT_BASKET_ANALYSIS_STYLE_RECOMMENDATION== FALSE ) 
+        return ( BASKET_ANALYSIS_FINDINGS )
+ 
+    COMPARISON_USER_MOVIES = FIND_VALID_ORIG_RATED_MOVIES_FOR_THIS_USER( COMPARISON_USER )
+
+    if (!is.na(COMPARISON_USER_MOVIES)) {
+        MOVIE = COMPARISON_USER_MOVIES[1]
+        BASKET_ANALYSIS_FINDINGS = DO_BASKET_ANALYSYS_BASED_RECOMMENDATION_FOR( MOVIE )
+        METRICS = TIMESTAMP( paste('MARKET BASKET RECOMMENDATIONS FOR', COMPARISON_USER, MOVIE ) )
+    }
+
+    return (BASKET_ANALYSIS_FINDINGS ) 
+}
+# ###################################################################################################
 
 
+# ###################################################################################################
+DO_BASIC_PLOTTING = function () {
+    # plot basic stats about the selected data
+    pdf("plot_basic_plots_collabfilt.pdf", 12, 8 )
+    print( "PDF FILE contains before (original ratings) and after (recommended ratings) snapshot comparison of the fit: plot_basic_plots_collabfilt.pdf" )
+    op = par( mfrow=c(3,2) )
+        UR4R = round(RECOMMENDATIONS_FOR_U2M_RATINGS)       # recommendations generated wrt by filling NA values with collaborative filtered values 
+        MR4R = t(RECOMMENDATIONS_FOR_U2M_RATINGS)           # above, but wrt movies and users
+        UIDX = rownames(UR4R)           # users to movies 
+        MIDX = rownames(MR4R)           # movis to users
+        MG = M[M2ID(MIDX),6:ncol(M)]    # genere bits per movie
+        UP = USER_PREFERENCES[UIDX,]    # genre preferences by user
+        MF = MOVIE_FEATURES[MIDX,]      # genre feature values for each movie
+        OR = WHICH_RATINGS              # original ratings of each user for all movies
+        RO = t(OR)                      # original ratings of each movie across all users
+        str(RO)
+
+        o_genre_means = c() 
+        r_genre_means = c()  
+        ou_per_gen = c()    
+        ru_per_gen = c()
+        o5 = o4 = o3 = o2 = o1 = c()
+        r5 = r4 = r3 = r2 = r1 = c()
+
+        #val = sum( apply(ifelse(OBJ[ which_rows,]==level,1,0), 2, sum, na.rm=TRUE) )
+        NUM_RATINGS_W = function( OBJ, level, which_rows ) {
+            val = ifelse(OBJ[ which_rows,]==level, 1, 0)
+            if ( all(is.na(val)) ) {
+                val = 0.0
+            } else {
+                val = apply(val, 2, sum, na.rm=TRUE)
+                if ( all(is.na(val))) {
+                    val = 0.0
+                } else {
+                    val = sum( val )
+                }
+            }
+            val = ifelse( is.na( val ), 0, val )
+        }
+
+        # val = mean(apply( RO[which_rows,],   1, mean, na.rm=TRUE ), na.rm=TRUE))
+        GENRE_MEANS_W = function( OBJ, which_rows ) {
+            val = OBJ[which_rows,]
+            if ( all(is.na(val)) ) {
+                 val = 0.0
+            } else {
+                val = apply( val, 1, mean, na.rm=TRUE )
+                if ( all(is.na(val)) ) {
+                    val = 0.0
+                } else {
+                    val = mean( val, na.rm=TRUE)
+                }
+            }
+        }
 
 
+        for ( col in colnames(MG) ) {
+            which_rows = which( MG[,col]== 1 )
+
+            o_genre_means = append ( o_genre_means, GENRE_MEANS_W( RO,   which_rows ))
+            r_genre_means = append ( r_genre_means, GENRE_MEANS_W( MR4R, which_rows ))
+
+            ou_per_gen     = append ( ou_per_gen,     sum(as.integer(apply(RO  [ which_rows,], 2, sum, na.rm=TRUE)>1 ) ))     
+            ru_per_gen     = append ( ru_per_gen,     sum(as.integer(apply(MR4R[ which_rows,], 2, sum, na.rm=TRUE)>1 ) ))     
+
+            o5 = append( o5, NUM_RATINGS_W( RO, 5, which_rows ))
+            o4 = append( o4, NUM_RATINGS_W( RO, 4, which_rows ))
+            o3 = append( o3, NUM_RATINGS_W( RO, 3, which_rows ))
+            o2 = append( o2, NUM_RATINGS_W( RO, 2, which_rows ))
+            o1 = append( o1, NUM_RATINGS_W( RO, 1, which_rows ))
+
+            r5 = append( r5, NUM_RATINGS_W( MR4R, 5, which_rows ))
+            r4 = append( r4, NUM_RATINGS_W( MR4R, 4, which_rows ))
+            r3 = append( r3, NUM_RATINGS_W( MR4R, 3, which_rows ))
+            r2 = append( r2, NUM_RATINGS_W( MR4R, 2, which_rows ))
+            r1 = append( r1, NUM_RATINGS_W( MR4R, 1, which_rows ))
+
+            ou_per_gen     = append ( ou_per_gen,     sum(as.integer(apply(RO  [ which_rows,], 2, sum, na.rm=TRUE)>1 ) ))     
+            ru_per_gen     = append ( ru_per_gen,     sum(as.integer(apply(MR4R[ which_rows,], 2, sum, na.rm=TRUE)>1 ) ))     
+
+        } 
+        reviews_written_per_user = apply( ifelse(OR>0,1,0), 1, sum, na.rm=TRUE )
+        number_of_movies_per_genre = apply( MG, 2, sum )
+
+        o = rbind( o1, o2, o3, o4, o5 ) ; r = rbind( r1, r2, r3, r4, r5 )
+        colnames(r) = colnames(o) = colnames(MG) ; rownames(o) = rownames(r) = paste(5:1,"*",sep="")
+
+        difference_in_genre_review_means = ( o_genre_means - r_genre_means ) ^2
+        names(difference_in_genre_review_means) = colnames(MG)
+
+        ot = apply( o, 1, sum )
+        rt = apply( o, 1, sum )
+        total_ratings_per_level = rbind( ot, rt )
+
+        DO_BARPLOT( number_of_movies_per_genre, cex=0.6, cex.axis=0.6, main="NUMBER MOVIES PER GENRE", las=2 )
+        DO_HIST(reviews_written_per_user, nbins=32, ptitle="FREQUENCY OF USERS WITH K REVIEWS", xlab="K = NUMBER REVIEWS WRITTEN" ) 
+
+        DO_BARPLOT( total_ratings_per_level, main="ORIG/AFTER: OVERALL DISTRIBUTION OF RATINGS" )
+        DO_BARPLOT( difference_in_genre_review_means, cex=0.6, cex.axis=0.6, main="ORIG/AFTR: DIFFERENCE IN GENRE MEANS", las=2 )
+
+        # http://stackoverflow.com/questions/20349929/stacked-bar-plot-in-r, http://www.statmethods.net/graphs/bar.html
+        DO_BARPLOT( o, cex=0.6,   cex.axis=0.6, main="ORIG: NUM. RATINGS PER GENRE",  las=2, legend = rownames(o))
+        DO_BARPLOT( r, cex=0.6,   cex.axis=0.6, main="AFTR: NUM. RATINGS PER GENRE",  las=2,   legend = rownames(r))
+
+        DO_HIST(apply(OR, 1, mean, na.rm=TRUE ) - apply(UR4R, 1, mean), nbins=32, ptitle="ORIG/AFTR: DIFF. IN OVERALL AVG RATING PER USER")
+        plot(apply(OR, 1, mean, na.rm=TRUE ), apply(UR4R, 1, mean), cex=0.6, main="ORIG/AFTR: DIFF. IN OVERALL AVG RATING PER USER")
+
+        DO_HIST(apply(OR, 2, mean, na.rm=TRUE ) - apply(UR4R, 2, mean), nbins=32, ptitle="ORIG/AFTR: DIFF. IN OVERALL AVG RATING PER MOVIE")
+        plot(apply(OR, 2, mean, na.rm=TRUE ), apply(UR4R, 2, mean), cex=0.6, main="ORIG/AFTR: DIFF. IN OVERALL AVG RATING PER MOVIE")
+
+        boxplot( UP, cex=0.6, cex.axis=0.6, main="RANGE OF COEFFICIENTS FOR USER PREFERENCES",  las=2 )
+        boxplot( MF, cex=0.6, cex.axis=0.6, main="RANGE OF COEFFICIENTS FOR MOVIE FEATURES",    las=2 )
+
+    par( op )
+    dev.off()
+}
+# ###################################################################################################
 
 
-
-
+resize.win <- function(Width=6, Height=6)
+{
+    dev.off(); 
+    dev.new(width=6, height=6)
+}
 
 
 
 # ###################################################################################################
 # ###################################################################################################
+BUILD_RECOMMENDATIONS = TRUE
+CHECK_RECOMMENDATIONS = TRUE
 # ###################################################################################################
 # ###################################################################################################
-METRICS <<- INIT_METRICS()
-METRICS <<- TIMESTAMP( "START" )
+
 
 
 # ###################################################################################################
-# ###################################################################################################
-# ###################################################################################################
-NEWLINE(10)
+if ( BUILD_RECOMMENDATIONS ) {
+    METRICS <<- INIT_METRICS()
+    METRICS <<- TIMESTAMP( "START" )
 
-
-
-
-
-
-    # ###################################################################################################
     # ###################################################################################################
     # ###################################################################################################
     # GLOBALS PARAMETERS
     # ###################################################################################################
-    N_USERS_TO_USE  = as.integer(1000 * 0.6)
-    N_MOVIES_TO_USE = as.integer(1800 * 0.8)
-        EPSILON      = 1E-1
-        REGPARAM     = 3E-1
+    N_USERS_TO_USE  = as.integer(1000 * 1.0)
+    N_MOVIES_TO_USE = as.integer(2000 * 1.0)
+        EPSILON      = 1E-2
+        REGPARAM     = 1E-1
         N_ITER       = 50
         DO_PDF       = TRUE
         DROP_TRIGGER = 1
+        PCA_PLOT_LIMITS = 5
     WHICH_USERS  <<- c()
     WHICH_MOVIES <<- c()
     # ###################################################################################################
@@ -794,6 +991,9 @@ NEWLINE(10)
                                                                      sample_n=7, debug=TRUE )
     # ###################################################################################################
     
+    # ###################################################################################################
+    DO_BASIC_PLOTTING()
+    # ###################################################################################################
 
     # ###################################################################################################
     PREVIOUS_OPTIONS = options( digits=4 )
@@ -818,98 +1018,68 @@ NEWLINE(10)
             cat( HEADER ); cat( HEADER )
     options( PREVIOUS_OPTIONS )
     # ###################################################################################################
-
-
-
-
-
-
-# ###################################################################################################
-# ###################################################################################################
+}
 # ###################################################################################################
 
 
-
-
-
-
-
+# ###################################################################################################
+if ( CHECK_RECOMMENDATIONS ) {
     # ###################################################################################################
     USER_LABELS  = rownames(WHICH_RATINGS)
     MOVIE_LABELS = colnames(WHICH_RATINGS)
-    # ###################################################################################################
-
     # ###################################################################################################
     RU2M = RECOMMENDATIONS_FOR_U2M_RATINGS 
     RM2U = t(RECOMMENDATIONS_FOR_U2M_RATINGS)
     # ###################################################################################################
 
     # ###################################################################################################
-    SAMPLED_MOVIES = sample( colnames(RU2M), nrow(RU2M))
-    RET1= GET_DISTANCE_MATRIX(RECOMMENDATIONS_FOR_U2M_RATINGS[,SAMPLED_MOVIES],    do_scaling=TRUE, do_plot=TRUE, transform="", vargoal=0.90) 
-    DR1 = EXTRACT_DISTANCE_MATRIX_AND_PCA_FROM( RET1, REF=RU2M, debug=TRUE )
+    SAMPLED_MOVIES = sample( colnames(RECOMMENDATIONS_FOR_U2M_RATINGS), 
+                                 nrow(RECOMMENDATIONS_FOR_U2M_RATINGS))
+    # ###################################################################################################
+
+    # ###################################################################################################
+    RET1 = GET_DISTANCE_MATRIX(RECOMMENDATIONS_FOR_U2M_RATINGS[,SAMPLED_MOVIES],    do_scaling=TRUE, do_plot=TRUE, transform="", vargoal=0.95) 
+    DR1  = EXTRACT_DISTANCE_MATRIX_AND_PCA_FROM( RET1, REF=RECOMMENDATIONS_FOR_U2M_RATINGS, debug=TRUE )
     Z1   = DR1$Z
     D1   = DR1$D
     # ###################################################################################################
 
     # ###################################################################################################
-    RET2 = GET_DISTANCE_MATRIX(t(RECOMMENDATIONS_FOR_U2M_RATINGS), do_scaling=TRUE, do_plot=TRUE, transform="in_pca_domain", vargoal=0.90) 
+    RET2 = GET_DISTANCE_MATRIX(RM2U, do_scaling=TRUE, do_plot=TRUE, transform="in_pca_domain", vargoal=0.95) 
     DR2  = EXTRACT_DISTANCE_MATRIX_AND_PCA_FROM( RET2, REF=RM2U, debug=TRUE )
     Z2   = DR2$Z
     D2   = DR2$D
     # ###################################################################################################
 
     # ###################################################################################################
+    # USING THE ABOVE PRECOMPUTED COMMON MATRICES FOR ALL USERS: RU2M, D1, D2, Z1, Z2 )
     # ###################################################################################################
+    DO_PCA_FULL_PLOT( Z2, nmax=2000, cex=0.4, pch="o", xlim=c(-PCA_PLOT_LIMITS,PCA_PLOT_LIMITS), 
+                                                       ylim=c(-PCA_PLOT_LIMITS,PCA_PLOT_LIMITS) )
 
-    # ###################################################################################################
     for( COMPARISON_USER in USER_LABELS ) {
-        DO_PCA_FULL_PLOT( Z2, nmax=512, cex=0.3, pch="o" )
 
-        SIMILARITY_RVALS = IDENTIFY_SIMILAR_USERS( COMPARISON_USER, RU2M, D=D1, Z=Z1 )
-            NEARBY  = SIMILARITY_RVALS$NEIGHBORS$nearby   
-            CLOSEST = SIMILARITY_RVALS$NEIGHBORS$closest
-
-        RETVALS = ANALYZE_SIMILAR_USER_FOR_MOVIE_RECOMMENDATIONS( COMPARISON_USER, CLOSEST )
-            SAME = RETVALS$SAME
-            MORE = RETVALS$MORE
-
-        RECOMMENDED_FOR_USER = WHICH_ONES_TO_RECOMMEND( COMPARISON_USER, CLOSEST, SAME, MORE, D=D2, Z=Z2 )
-        if ( HOW_MANY_RECOMMENDATION_WERE_FOUND(RECOMMENDED_FOR_USER) == 0 )
-            FIND_ALTERNATIVE_RECOMMENDATION_WRT( COMPARISON_USER, CLOSEST, D1, Z1, D2, Z2, RU2M )
-        else {
-            REC_TOPMOST = RECOMMENDED_FOR_USER[1,'RECOMMENDATION'] 
-            REC_RATING  = RECOMMENDED_FOR_USER[1,'RATING']
-        }
-        METRICS = TIMESTAMP( paste('COLLAB.FILTERED RECOMMENDATIONS FOR', COMPARISON_USER) )
+        USER_RECOMMENDATIONS = DO_USER_RECOMMENDATION( COMPARISON_USER ) 
 
         cat(HEADER)
-        COMPARISON_USER_MOVIES = FIND_VALID_ORIG_RATED_MOVIES_FOR_THIS_USER( COMPARISON_USER )
-        if (!is.na(COMPARISON_USER_MOVIES))
-            BASKET_ANALYSIS_FINDINGS = APPLY_MARKET_BASKET_ASSOCIATON_ANALYSIS_WRT( RECOMMENDATIONS_FOR_U2M_RATINGS,
-                                                                                    COMPARISON_USER_MOVIES[1], 
-                                                                                    SUPPORT=0.40,
-                                                                                    CONF=0.65, 
-                                                                                    STEP=0.18,
-                                                                                    PIVOT=5,
-                                                                                    MIN_SUPPORT=5/nrow(RECOMMENDATIONS_FOR_U2M_RATINGS))
 
-        METRICS = TIMESTAMP( paste('MARKET BASKET RECOMMENDATIONS FOR', COMPARISON_USER) )
+        OTHERS_ALSO_WATCHED =  DO_MOVIE_RECOMMENDATION( COMPARISON_USER, 
+                                                        ATTEMPT_BASKET_ANALYSIS_STYLE_RECOMMENDATION=FALSE )
 
         cat(HEADER)
         cat(HEADER)
         cat(HEADER)
         NEWLINE(1)
     }
-
     # ###################################################################################################
+}
+# ###################################################################################################
 
 
  
-
- 
-
-
-
 
 sink()
+
+
+
+

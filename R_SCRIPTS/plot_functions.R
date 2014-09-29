@@ -64,10 +64,17 @@ DO_QQPLOT = function( x, nbins=32, use_par=TRUE, ptitle="Residuals" ) {
 
 
 # ###############################################################################
-DO_HIST = function( x, nbins=32, ptitle="Histogram of Residuals" ) {
-    hist(x, freq=FALSE, breaks=nbins, main=ptitle)
-    f.den <- function(t) dnorm(t, mean=mean(x), sd=sqrt(var(x)))
+DO_HIST = function( x, nbins=32, ptitle="Histogram of Residuals", ... ) {
+    hist(x, freq=FALSE, breaks=nbins, main=ptitle, ...)
+    f.den <- function(t) dnorm(t, mean=mean(x,na.rm=TRUE), sd=sd(x,na.rm=TRUE))
     curve(f.den, add=TRUE, col="darkblue", lwd=2)
+}
+# ###############################################################################
+
+
+# ###############################################################################
+DO_BARPLOT = function( x, ... ) {
+    barplot( x, ... )
 }
 # ###############################################################################
 
