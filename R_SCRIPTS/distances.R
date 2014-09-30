@@ -203,6 +203,12 @@ MIN_DISTANCE_FROM = function( X, i, D=matrix(), PCA=matrix(), do_plot=TRUE, debu
 
 
 # ###################################################################################################
+COLOR_SHIFT = 24
+SHIFTCOLOR = function( ) { COLOR_SHIFT<<-(COLOR_SHIFT+1)%%400 + 24 }
+# ###################################################################################################
+
+
+# ###################################################################################################
 FIND_NEIGHBORING_POINTS = function( X, ix, D=matrix(), PCA=matrix(), new_plot=FALSE, color="brown", debug=FALSE ) {
     cat( HEADER )
     print( sprintf("LOOKING FOR SIMILAR ITEMS TO %s",  ix ) )
@@ -228,9 +234,10 @@ FIND_NEIGHBORING_POINTS = function( X, ix, D=matrix(), PCA=matrix(), new_plot=FA
                    (length(nearby)-1)/length(rownames(X))*100,
                     sigma_level/sigma ) )
 
+    set_coloring = SHIFTCOLOR()
     for ( ij in nearby ) { 
         if ( ij == ix ) next
-        DO_PCA_NEIGHBORING_PLOT( ix, ij, PCA, new_plot=FALSE, color=color )
+        DO_PCA_NEIGHBORING_PLOT( ix, ij, PCA, new_plot=FALSE, color=set_coloring )
         if ( debug ) print ( paste( ix, x_ij_distances[ij], ij )) 
     }
 
@@ -263,18 +270,17 @@ DO_PCA_NEIGHBORING_PLOT = function( i, min_ij_idx, Z, new_plot=FALSE, color="gre
         x1 = Z[min_ij_idx,1]
         y1 = Z[min_ij_idx,2]
 
-        segments( x0, y0, x1=x1, y1=y1, col=color, lwd=2 )
+        segments( x0, y0, x1=x1, y1=y1, col=color, lwd=1 )
 
         if ( new_plot ) {
-            x1lab = paste( "WRT:", i )
-            points( x=x0, y=y0, col="blue", bg="blue", pch=24,  cex=0.7 )   # points( x=Z[i,1], y=Z[i,2], col="blue", bg="blue", pch=24,  cex=0.7 )
-            text( x=x0+dx, y=y0, x1lab, col="blue", cex=0.4 )               # text( x=Z[i,1]+dx, y=Z[i,2], x1lab, col="blue", cex=0.7 )
+            x1lab = paste( i )
+            points( x=x0, y=y0, col="blue", bg="blue", pch=24,  cex=0.7 ) # points( x=Z[i,1], y=Z[i,2], col="blue", bg="blue", pch=24,  cex=0.7 )
+            text( x=x0+dx, y=y0, x1lab, col="blue", cex=0.4, srt=30 )     # text( x=Z[i,1]+dx, y=Z[i,2], x1lab, col="blue", cex=0.7 )
         }
 
-        x2lab = paste( "MIN=", min_ij_idx )
-        points( x=x1, y=y1, col=color, bg=color, pch=23, cex=0.7 )          # points( x=Z[min_ij_idx,1], y=Z[min_ij_idx,2], col=color, bg=color, pch=23, cex=0.7 )
-        text( x=x1+dx, y=y1, x2lab, col=color, cex=0.4 )                    # text( x=Z[min_ij_idx,1]+dx, y=Z[min_ij_idx,2], x2lab, col=color, cex=0.7 )
-
+        points( x=x1, y=y1, col=color, bg=color, pch=23, cex=0.7 )        # points(x=Z[min_ij_idx,1],y=Z[min_ij_idx,2],col=color,bg=color,pch=23,cex=0.7 )
+        # x2lab = paste( "min=", min_ij_idx )
+        # text( x=x1+dx, y=y1, x2lab, col=color, cex=0.4, srt=45 )        # text( x=Z[min_ij_idx,1]+dx, y=Z[min_ij_idx,2], x2lab, col=color, cex=0.7 )
     }
 }
 # ###################################################################################################
