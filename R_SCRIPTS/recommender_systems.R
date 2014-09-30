@@ -45,6 +45,7 @@ source( 'distances.R' )
 source( 'stochastic_gradient_descent.R' )
 source( 'basket_rules.R' )
 source( 'recommender_diagnostics.R' )
+source( 'recommender_igraphs.R')
 # ######################################################################################################
 
 
@@ -1106,6 +1107,21 @@ if ( CHECK_RECOMMENDATIONS ) {
     EXTRACT_MAPPINGS( UU2, TITLE="TIER_2 USER RECOMMENDATIONS",          MAPPER=USER_COMPARATOR,   TIER=2 )
     EXTRACT_MAPPINGS( UM2, TITLE="TIER_2 USER TO MOVIE RECOMMENDATIONS", MAPPER=USER2MOVIE_PRINTER,TIER=2 )
     sink( )
+    # ###################################################################################################
+
+    # ###################################################################################################
+    if ( DO_PDF ) { 
+        graphics.off()
+
+        pdf( 'plot_recommendation_network_collabfilt.pdf', 11, 11 )
+
+            PLOT_MATRIX( UUMAP1, layout=layout.fruchterman.reingold ) #layout.svd )
+
+            PLOT_MATRIX( MMMAP1, layout=layout.fruchterman.reingold )
+
+        dev.off()
+    }
+
     # ###################################################################################################
 
 sink()

@@ -559,3 +559,9 @@ MEAN = function( x, ... ) {
 }
 # ###################################################################################################
 
+
+ISNA = function( x, defaultval=0, ... ) {
+    if ( is.na(x)   ) return ( defaultval )
+    if ( is.null(x) ) return ( defaultval )
+    return ( x )
+}
