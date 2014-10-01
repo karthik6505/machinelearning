@@ -173,7 +173,6 @@ DO_BASIC_PLOTTING = function () {
         MF = MOVIE_FEATURES[MIDX,]      # genre feature values for each movie
         OR = WHICH_RATINGS              # original ratings of each user for all movies
         RO = t(OR)                      # original ratings of each movie across all users
-        str(RO)
 
         o_genre_means = c() 
         r_genre_means = c()  
@@ -229,7 +228,9 @@ DO_BASIC_PLOTTING = function () {
             r1 = append( r1, NUM_RATINGS_W( MR4R, 1, which_rows ))
         } 
 
-        reviews_written_per_user = apply( ifelse(OR>0,1,0), 1, sum, na.rm=TRUE )
+        reviews_written_per_user  = rowSums(ifelse(OR>0,1,0), na.rm=TRUE)
+        reviews_written_per_movie = colSums(ifelse(OR>0,1,0), na.rm=TRUE)
+        
         number_of_movies_per_genre = apply( MG, 2, sum )
 
         o = rbind( o1, o2, o3, o4, o5 ) ; r = rbind( r1, r2, r3, r4, r5 )
@@ -239,11 +240,11 @@ DO_BASIC_PLOTTING = function () {
         names(difference_in_genre_review_means) = colnames(MG)
 
         ot = apply( o, 1, sum )
-        rt = apply( o, 1, sum )
+        rt = apply( r, 1, sum )
         total_ratings_per_level = rbind( ot, rt )
 
         DO_BARPLOT( number_of_movies_per_genre, cex=0.6, cex.axis=0.6, main="NUMBER MOVIES PER GENRE", las=2 )
-        DO_HIST(reviews_written_per_user, nbins=32, ptitle="FREQUENCY OF USERS WITH K REVIEWS", xlab="K = NUMBER REVIEWS WRITTEN" ) 
+        hist(reviews_written_per_user, breaks=32, main="FREQUENCY OF USERS WITH K REVIEWS", xlab="K = NUMBER REVIEWS WRITTEN" ) 
 
         DO_BARPLOT( total_ratings_per_level, main="ORIG/AFTER: OVERALL DISTRIBUTION OF RATINGS" )
         DO_BARPLOT( difference_in_genre_review_means, cex=0.6, cex.axis=0.6, main="ORIG/AFTR: DIFFERENCE IN GENRE MEANS", las=2 )
@@ -260,6 +261,16 @@ DO_BASIC_PLOTTING = function () {
 
         boxplot( UP, cex=0.6, cex.axis=0.6, main="RANGE OF COEFFICIENTS FOR USER PREFERENCES",  las=2 )
         boxplot( MF, cex=0.6, cex.axis=0.6, main="RANGE OF COEFFICIENTS FOR MOVIE FEATURES",    las=2 )
+
+        par( mfrow=c(4,1) )
+        uo = rowMeans( OR,      na.rm=TRUE )
+        ur = rowMeans( UR4R,    na.rm=TRUE )
+        mo = rowMeans( t(OR),   na.rm=TRUE )
+        mr = rowMeans( t(UR4R), na.rm=TRUE )
+        DO_BARPLOT( rowSums( ifelse(OR>0,1,0),na.rm=TRUE ), main="TOTAL NUMBER REVIEWS PER USER (ORIG)",  las=1, cex.axis=0.6, cex=0.6 )
+        DO_BARPLOT( colSums( ifelse(OR>0,1,0),na.rm=TRUE ), main="TOTAL NUMBER REVIEWS PER MOVIE (ORIG)", las=1, cex.axis=0.6, cex=0.6 )
+        DO_BARPLOT( uo-ur, main="DIFFERENCE USER RATING MEANS: ORIG-AFTR",  las=1, cex.axis=0.6, cex=0.6 )
+        DO_BARPLOT( mo-mr, main="DIFFERENCE MOVIE RATING MEANS: ORIG-AFTR", las=1, cex.axis=0.6, cex=0.6 )
 
     par( op )
     dev.off()

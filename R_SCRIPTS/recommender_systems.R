@@ -112,6 +112,11 @@ GET_XY_FOR_GENRE_AS_X_AND_USER_RATING_AS_Y = function( ORIG_RATINGS, NUSERS=100,
         MU = matrix(apply(M2U,1,mean,na.rm=TRUE))
         SD = matrix(apply(M2U,1,sd,  na.rm=TRUE))  
         SD = ifelse( is.na(SD), 0, SD )
+        MIN= matrix(apply(M2U,1,min, na.rm=TRUE))
+        MAX= matrix(apply(M2U,1,max, na.rm=TRUE))
+        MED= matrix(apply(M2U,1,median, na.rm=TRUE))
+        RNG= MAX-MIN
+        RSD= SD/(RNG+1)
 
         if ( FALSE ) {
             MU = MU + mean(MU,na.rm=TRUE)
@@ -122,8 +127,10 @@ GET_XY_FOR_GENRE_AS_X_AND_USER_RATING_AS_Y = function( ORIG_RATINGS, NUSERS=100,
         # BOOTSTRAP the FIRST generation of the PREDICTIVE FEATURES (i.e., GENREs) as 
         # the AVERAGE Rating BY THOSE WHO RATED THE MOVIE plus STD.DEV on such ratings
         # ###########################################################################
-        # NX = data.frame( "movie_id"=X[,1], "rating_mean"=MU, "rating_dev"=SD )
-        NX = data.frame( "rating_mean"=MU, "rating_dev"=SD )
+        # NX = data.frame( "rating_mean"=MU, "rating_dev"=SD )
+
+        NX = data.frame( "rating_mean"=MU, "rating_dev"=SD, 'rating_min'=MIN, 'rating_max'=MAX, 'rating_range'=RNG, 'rating_median'=MED, 'rating_varratio'=RSD )
+
         for( i in 2:ncol(X)) {
             Xi = matrix(X[,i])
 
@@ -132,8 +139,11 @@ GET_XY_FOR_GENRE_AS_X_AND_USER_RATING_AS_Y = function( ORIG_RATINGS, NUSERS=100,
 
             NX = cbind( NX, Xi )
         }
-        # colnames(NX) = c( "movie_id", "rating_mean", "rating_dev", colnames(MOVIES[c(6:ncol(M))]))
-        colnames(NX) = c( "rating_mean", "rating_dev", colnames(MOVIES[c(6:ncol(M))]))
+
+        summary_stats_colnames = c( "rating_mean", "rating_dev" )
+        summary_stats_colnames = append( summary_stats_colnames, c( 'rating_min', 'rating_max', 'rating_range', 'rating_median', 'rating_varratio') )
+
+        colnames(NX) = c( summary_stats_colnames, colnames(MOVIES[c(6:ncol(M))]))
         rownames(NX) = rownames(M2U)
 
         # NX = NX[,3:ncol(NX)]
