@@ -36,14 +36,16 @@ require(igraph)
 
 
 # ######################################################################################################
-PLOT_MATRIX = function( MAT, WITH_NAMES=TRUE, layout=layout.fruchterman.reingold, debug=FALSE ) {
+PLOT_MATRIX = function( MAT, VNAMES=c(), WITH_NAMES=TRUE, layout=layout.fruchterman.reingold, WHO="USERS", DELETE_EMPTY=TRUE, debug=FALSE ) {
     if (nrow(MAT)==ncol(MAT))
         g = graph.adjacency( MAT, mode="directed", weighted=TRUE )
     else
         g=graph.data.frame(  MAT, directed=TRUE )
 
+    V(g)$size  = 0
+
     for( i in 1:ncol(MAT) )
-        V(g)[i]$name  = colnames(MAT)[i]
+        V(g)[i]$name  = VNAMES[i]
 
     for ( i in 1:nrow(MAT) ) {
         which_ones  = names(which( MAT[,i]>=1, arr.ind=T))
@@ -51,13 +53,16 @@ PLOT_MATRIX = function( MAT, WITH_NAMES=TRUE, layout=layout.fruchterman.reingold
 
         V(g)[i]$color = 'green'
         V(g)[i]$size  = which_size
-        V(g)[i]$name  = colnames(MAT)[i]
+        V(g)[i]$name  = VNAMES[i]
+
+        if ( which_size == 0 )
+            V(g)[i]$visible = FALSE
 
         if ( which_size != 0 ) {
             which_color = sample(32:255,1)
 
             V(g)[which_ones]$color = which_color
-            V(g)[which_ones]$size  = round(log(which_size+2))
+            V(g)[which_ones]$size  = round(log(which_size)+2)
 
             E(g)[ i %--% which_ones ]$color = which_color
             E(g)[ i %--% which_ones ]$edge.width = round(log(which_size+2))
@@ -71,27 +76,36 @@ PLOT_MATRIX = function( MAT, WITH_NAMES=TRUE, layout=layout.fruchterman.reingold
         }
     }
 
-    if ( WITH_NAMES ) {
-        V(g)$name = NA
-        for ( i in 1:nrow(MAT) ) {
-            which_ones  = names(which( MAT[,i]>=1, arr.ind=T))
-            which_size  = ISNA(length(which_ones))
-            if( which_size ) {
-                V(g)[i]$name = i
+    for ( i in 1:nrow(MAT) ) {
+        which_ones  = names(which( MAT[,i]>=1, arr.ind=T))
+        which_size  = ISNA(length(which_ones))
 
-                # rulesofreason.wordpress.com/2012/11/05/...
-                    V(g)[i]$label=i
-                    V(g)[i]$label.font=2
-                    V(g)[i]$label.cex=0.4
-                    V(g)[i]$label.color="black"
-                    V(g)[i]$label.dist=0.0
+        if( which_size ) {
+            # rulesofreason.wordpress.com/2012/11/05/...
+            V(g)[i]$name =VNAMES[i]
+            V(g)[i]$label=VNAMES[i]
+            V(g)[i]$label.dist=0.0
+            if ( substr(VNAMES[i],1,1) == "M")  {
+                V(g)[i]$label.font=2
+                V(g)[i]$label.color="black"
+                V(g)[i]$label.cex=0.40
+            }
+            if ( substr(VNAMES[i],1,1) == "U")  {
+                V(g)[i]$label.font=3
+                V(g)[i]$label.color="brown"
+                V(g)[i]$label.cex=0.30
             }
         }
-        plot.igraph( g, layout=layout, edge.arrow.size=0.05 )
-    } else {
-        plot.igraph( g, layout=layout, vertex.label=NA, edge.arrow.size=0.05 )
     }
 
+    if ( DELETE_EMPTY )
+        g = delete.vertices(  g, names(which(degree(g) == 0 )))
+
+    plot_title = paste("COLLABORATIVELY FILTERED\nRECOMMENDATION SOCIAL NETWORK BETWEEN", WHO )
+    if ( WITH_NAMES )
+        plot.igraph( g, layout=layout, edge.arrow.size=0.05, main=plot_title )
+    else
+        plot.igraph( g, layout=layout, vertex.label=NA, edge.arrow.size=0.05, main=plot_title )
 
     return ( g )
 }

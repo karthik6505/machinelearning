@@ -147,7 +147,8 @@ GET_DISTANCE_MATRIX = function( xdf, dist_metric="euclidean", do_scaling=TRUE, d
 
     VERIFY( "dist(pca(1-prob(scaled_x),vargoal))", z)
     if ( do_plot ) {
-        DO_PCA_FULL_PLOT( z, nmax=512, cex=1.0, pch="+" )
+        nmax=min(nrow(z),1024)
+        DO_PCA_FULL_PLOT( z, nmax=nmax, cex=0.8, pch=".", col="black" )
         METRICS <<- TIMESTAMP( "PLOT" )
     }
 
@@ -172,31 +173,48 @@ GET_DISTANCE = function( X, i, j=0, D=matrix() ) {
 
 
 # ###################################################################################################
-MIN_DISTANCE_FROM = function( X, i, D=matrix(), PCA=matrix(), do_plot=TRUE, debug_=FALSE, ... ) {
-    mx = nrow(as.matrix(D))
-    ij_dist = c(as.matrix(D)[i, c(1:mx)])
-    min_ij_val = 1E131
+MIN_DISTANCE_FROM = function( X, ref_rowname, D=matrix(), PCA=matrix(), do_plot=TRUE, debug_=FALSE, ... ) {
+    if ( !(ref_rowname %in% rownames(X)) ) {
+        cat(HEADER)
+        print ( sprintf( "ERROR: %s indexing reference is NOT a rowname of X", ref_rowname ) )
+        cat(HEADER)
+    }
+
+    DD = as.matrix(D)
+    rownames(DD)=rownames(X)
+    colnames(DD)=rownames(X)
+
+    min_ij_val = Inf
     min_ij_idx = NA
-    for( j in 1:length(ij_dist) ) {
-        if (ij_dist[j] <= min_ij_val) {
-            if ( j!=i ) {
-                min_ij_val = ij_dist[j]
-                min_ij_idx = j
+    if ( FALSE ) {
+        ij_dist = c(as.matrix(DD)[ref_rowname,])
+        for( j in 1:length(ij_dist) ) {
+            if (ij_dist[j] <= min_ij_val) {
+                if ( debug_ ) print( paste( ref_rowname, j, ref_rowname, rownames(DD)[ref_rowname], rownames(DD)[j], ij_dist[j] ))
+                if ( rownames(DD)[j] != ref_rowname ) { # if ( j != ref_rowname ) {
+                    min_ij_val = ij_dist[j]
+                    min_ij_idx = j
+                }
             }
         }
+    } else {
+        w = DD[ref_rowname,] 
+        w1 = ifelse( names(w)==ref_rowname, Inf, w )
+        min_ij_idx = which( w == min(w1), arr.ind=TRUE )[1]
+        min_ij_val = DD[ref_rowname, min_ij_idx]
     }
-    # min_ij_val = min(ij_dist)
-    # min_ij_idx = which( ij_dist == min_ij_val )[1]
 
-    if ( nrow(PCA)== 0 ) {
-        if ( nrow(D)!= 0 ) Z = DO_PCA(D, ...)$Z
+    if ( do_plot && nrow(PCA)== 0 ) {
+        if ( nrow(DD)!= 0 ) Z = DO_PCA(DD, ...)$Z
     } else 
         Z = PCA
 
-    if ( nrow(Z) && do_plot )
-        DO_PCA_NEIGHBORING_PLOT( i, min_ij_idx, Z )
+    if ( nrow(Z)!=0 && do_plot )
+        DO_PCA_NEIGHBORING_PLOT( ref_rowname, min_ij_idx, Z )
 
-    retvals = list( 'minidx'=as.integer(min_ij_idx), 'minval'=as.numeric(min_ij_val), 'minx'=X[min_ij_idx,])
+    retvals = list( 'minidx'=as.integer(min_ij_idx), 'minval'=as.numeric(min_ij_val), 'minx'=X[min_ij_idx,], 'wrt'=ref_rowname )
+    if ( debug_ ) print (retvals)
+
     return( retvals )
 }
 # ###################################################################################################
@@ -249,21 +267,21 @@ FIND_NEIGHBORING_POINTS = function( X, ix, D=matrix(), PCA=matrix(), new_plot=FA
 
 
 # ###################################################################################################
-DO_PCA_FULL_PLOT = function( Z, nmax=0, pch="+", ... ) {
-    zp = as.matrix(Z)
-    if ( nmax== 0 ) nmax = nrow(Z)
-    nmax = min(nmax, 5E3, nrow(Z))
-    sampled_rows = sample(rownames(Z),nmax)
+DO_PCA_FULL_PLOT = function( Z, nmax=0, ... ) {
+    # zp = as.matrix(Z)
+    # if ( nmax== 0 ) nmax = nrow(Z)
+    # nmax = min(nmax, 5E3, nrow(Z))
+    # sampled_rows = sample(rownames(Z),nmax)
     plot(x=as.matrix(Z[,1]), y=as.matrix(Z[,2]), ... )
 }
 # ###################################################################################################
 
 
 # ###################################################################################################
-DO_PCA_NEIGHBORING_PLOT = function( i, min_ij_idx, Z, new_plot=FALSE, color="green" ) {
+DO_PCA_NEIGHBORING_PLOT = function( i, min_ij_idx, Z, new_plot=FALSE, color="green", ds=5 ) {
     if ( nrow(Z) ) {
-        dx= Z[i,1]/20  * rnorm(1,1,2)
-        dy= Z[i,2]/20  * rnorm(1,1,2)
+        dx= Z[i,1]/ds  * rnorm(1,0,1E-1)
+        dy= Z[i,2]/ds  * rnorm(1,0,1E-1)
 
         x0 = Z[i,1]
         y0 = Z[i,2]
@@ -300,32 +318,46 @@ if ( DO_DISTANCE_VALIDATION ) {
     # ###################################################################################################
 
     # ###################################################################################################
-    s13 = NULL
     if ( TRUE ) {
-        cat ( HEADER )
-        MY_DISTANCE_MATRIX_RETVALS = GET_DISTANCE_MATRIX ( X, dist_metric="euclidean", do_scaling=TRUE, do_plot=FALSE, transform="" )
-        D1  = as.matrix(MY_DISTANCE_MATRIX_RETVALS$distances)
-        PCA1= MY_DISTANCE_MATRIX_RETVALS$pca_space
-        s13 = MIN_DISTANCE_FROM ( X, 2, D=D1, PCA=PCA1 )
-        t1  = D1[2,]
-        cat ( HEADER )
-        print( s13 )
-        cat ( HEADER )
-    }
-    # ###################################################################################################
+        NUM_TESTS = 10
 
-    # ###################################################################################################
-    if ( TRUE ) {
+        NEWLINE(20)
+
+        PREVIOUS_OPTIONS = options( digits=3 )
+
         cat ( HEADER )
-        MY_DISTANCE_MATRIX_RETVALS  = GET_DISTANCE_MATRIX ( X, dist_metric="euclidean", do_scaling=TRUE, do_plot=FALSE, transform="in_pca_domain,in_probas_domain", vargoal=0.55 )
-        D3  = as.matrix(MY_DISTANCE_MATRIX_RETVALS$distances)
-        PCA3= MY_DISTANCE_MATRIX_RETVALS$pca_space
-        s33 = MIN_DISTANCE_FROM ( X, 2, D=D3, PCA=PCA3 )
-        t3  = D3[2,]
-        cat ( HEADER )
-        print( s33 )
-        cat ( HEADER )
+        DISTANCE_MATRIX_RETVALS  = GET_DISTANCE_MATRIX ( X, dist_metric="euclidean", 
+                                                         do_scaling=TRUE, 
+                                                         do_plot=FALSE, 
+                                                         transform="in_pca_domain,in_probas_domain", 
+                                                         vargoal=0.85)
+
+        D3   = as.matrix(DISTANCE_MATRIX_RETVALS$distances)
+        PCA3 = DISTANCE_MATRIX_RETVALS$pca_space
+
+        WHICH_SAMPLES = sample( rownames(X), min(NUM_TESTS,nrow(X) ))
+
+        DO_PCA_FULL_PLOT( PCA3, pch="+", cex=0.5 )
+
+        for ( i in WHICH_SAMPLES ) {
+
+            RETVALS = MIN_DISTANCE_FROM ( X, i, D=D3, PCA=PCA3 )
+            CLOSEST = RETVALS$minidx
+
+            DO_PCA_NEIGHBORING_PLOT( i, CLOSEST, PCA3, new_plot=TRUE, color="green" )
+
+            print( CLOSEST )
+            print( X[c(i,CLOSEST),] )            # the original samples belong to a different measurements space, likely not orthogonal
+            NEWLINE(1)
+            print( PCA3[c(i,CLOSEST),] )        # distances were measure here, in the PCA domain evaluated at given vargoal reduction 
+                                                # (a distance space having vargoal-->k key othogonal components)
+            cat ( HEADER )
+            NEWLINE(1)
+        }
+
+        options( PREVIOUS_OPTIONS )
     }
+    title( "(2D PCA PROJECTION WRT TRANSFORMED(X)" )
     # ###################################################################################################
 
     # ###################################################################################################
@@ -334,11 +366,11 @@ if ( DO_DISTANCE_VALIDATION ) {
 
     # ###################################################################################################
 
-    MY_DISTANCE_MATRIX_RETVALS 
+    DISTANCE_MATRIX_RETVALS 
 
     sink()
 
-    MY_DISTANCE_MATRIX_RETVALS 
+    DISTANCE_MATRIX_RETVALS 
 }
 
 # ###################################################################################################

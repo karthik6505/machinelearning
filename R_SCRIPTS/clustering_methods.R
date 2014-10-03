@@ -21,6 +21,8 @@
 # @DATE:    September, 2014
 # @URL:     http://www.bitbucket.org/nelsonmanohar/machinelearning
 # ######################################################################################################
+sink( "output_clustering_methods_diagnostics.out", split=TRUE )
+
 LICENSETEXT = "These R code samples (version Sep/2014), Copyright (C) Nelson R. Manohar,
 comes with ABSOLUTELY NO WARRANTY.  This is free software, and you are welcome to 
 redistribute it under conditions of the GNU General Public License." 
@@ -30,11 +32,489 @@ message("")
 
 
 # ######################################################################################################
-# http://www.statmethods.net/advstats/cluster.html
+OLD_CA = commandArgs()
+commandArgs <- function() list(TEST_ENABLED=FALSE, DO_DISTANCE_VALIDATION=FALSE, RUN_VALIDATE_SGD=FALSE )
+# ######################################################################################################
+
+
+# ######################################################################################################
+source('utilities.R')
+source('distances.R')
 # ######################################################################################################
 
 
 # ######################################################################################################
 # http://www.statmethods.net/advstats/cluster.html
+# Prior to clustering data, you may want to remove or estimate missing data and rescale variables for comparability.
 # ######################################################################################################
+DATA_CLEANING = function( mydata, nmax=0 ) {
+    mydata <- na.omit(mydata)           # listwise deletion of missing
+    mydata <- scale(mydata)             # standardize variables
+    if ( nmax==0 ) {
+        nmax = nrow(mydata )
+        which_rows = order( sample( rownames(mydata), nmax ) )
+        mydata = mydata[which_rows, ]
+    }
+    return ( mydata )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+# http://www.statmethods.net/advstats/cluster.html
+# Partitioning: # estimation of the bend-point estimation on the error fit
+# Determine number of clusters
+# ######################################################################################################
+FIND_WSS_BEND = function( mydata ) {
+    wss <- (nrow(mydata)-1) * sum( apply(mydata, 2, var) )
+    for (i in 2:15) 
+        wss[i] <- sum(kmeans(mydata, centers=i)$withinss)
+    plot(1:15, wss, type="b", xlab="Number of Clusters", ylab="Within groups sum of squares")
+    k = 5
+    return ( k )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+# K-Means Cluster Analysis
+# ######################################################################################################
+DO_KMEANS = function( mydata, K, nstarts=100, ... ) {
+    fit <- kmeans(mydata, K, ...) 
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+# retvals = list( 'MAPPINGS'=MAPPING, 'CENTROIDS'=CENTROIDS 'METRICS'=list( END=END, WHY=WHY, ERROR=ERROR ))
+# ######################################################################################################
+KMEANS_ITERATOR = function( X, K, do_scaling=TRUE, do_plot=FALSE, transforms="in_pca_domain,in_probas_domain", nstarts=100, vargoal=0.999, EPSILON=5E-3, debug=FALSE ) {
+    ITERATION = list()
+    for ( i in 1:nstarts ) {
+        RETVALS = DO_KMEANS2( Xdf, K, do_scaling, do_plot, transforms, vargoal, EPSILON, debug )
+        ITERATION[[i]] = RETVALS
+    }
+
+    for ( i in 1:nstarts ) {
+        print( ITERATION[[i]]$CENTROIDS )
+    }
+}
+# ######################################################################################################
+    
+
+# ######################################################################################################
+DO_DETAILED_INSIGHTS_KMEANS = function( Xdf, K, do_scaling=TRUE, do_plot=FALSE, transforms="in_pca_domain,in_probas_domain", vargoal=0.999, EPSILON=5E-3, debug=FALSE) {
+
+    opts = options( digits=2, width=132 )
+
+    if ( do_scaling ) {
+        X = as.matrix(scale(Xdf))
+        colnames(X) = colnames(Xdf)
+        rownames(X) = rownames(Xdf)
+    } 
+    str(X)
+
+    ITEMS = rownames(X)
+    M     = length(ITEMS)
+    N_ITER= 100
+
+    CIDX      = sample(ITEMS,K) 
+    CENTROIDS = X[c(CIDX),]
+    rownames(CENTROIDS) = CLUSTER_NAMES( 1:K )
+    CIDX  = rownames(CENTROIDS)
+
+    OLD_CENTROIDS = CENTROIDS
+
+    MAPPING = MATRIX( M, N_ITER )
+
+    rownames(MAPPING) = rownames(X)
+
+    METRICS = list()
+
+    JCOSTS = c()
+
+    for (iter in 1:N_ITER ) {
+        ITER_MAPPING = DO_KMEANS_CLUSTER_ASSIGNMENT( X, ITEMS, CIDX, OLD_CENTROIDS, do_plot=do_plot )
+
+        MAPPING[,iter] = ITER_MAPPING
+
+        JCOST = COMPUTE_JCOST( OLD_CENTROIDS, X, MAPPING, AT_ITER=iter )
+
+        JCOSTS = append( JCOSTS, JCOST )
+
+        NEW_CENTROIDS = DO_RECOMPUTE_CLUSTER_MEANS( X, CIDX, MAPPING, iter )
+
+        RETVALS = ANALYZE_ENDING_CONDITION( iter, NEW_CENTROIDS, OLD_CENTROIDS, JCOSTS, EPSILON=EPSILON )
+
+        METRICS[[iter]] = RETVALS
+
+        if ( RETVALS$END ) {
+            print ( RETVALS$WHY )
+            break
+        }
+
+        OLD_CENTROIDS = NEW_CENTROIDS
+    }
+
+    retvals = list( 'MAPPINGS'=MAPPING, 'CENTROIDS'=CENTROIDS, 'METRICS'=METRICS, 'JCOSTS'=JCOSTS )
+
+    if ( do_plot ) dev.off()
+    options( opts )
+
+    cat( HEADER )
+    cat( HEADER )
+    cat( HEADER )
+
+    return ( retvals )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+DO_KMEANS_CLUSTER_ASSIGNMENT = function( X, ITEMS, CIDX, OLD_CENTROIDS, do_plot=FALSE, vargoal=0.999, debug=FALSE ) {
+    ITER_MAPPING = c()
+
+    XXX = rbind(X, OLD_CENTROIDS )
+        rownames(XXX) = c( rownames(X), CIDX ) 
+        colnames(XXX) = colnames( X )
+
+    PCA = DO_PCA( XXX, vargoal=vargoal, silent=TRUE, debug=FALSE )
+    Z = PCA$Z
+    Ureduce = PCA$Ureduce
+
+    if ( do_plot ) 
+        DO_PCA_FULL_PLOT( Z, cex=0.8 ) #, xlim=c(-15,15), ylim=c(-15,15) )
+
+    for ( item in ITEMS ) {
+        XX = rbind( OLD_CENTROIDS, X[item,] )
+        rownames(XX) = c( CIDX, item) 
+
+        D = dist( XX )
+
+        Zz = matrix()
+        if ( do_plot ) Zz = XX %*% Ureduce
+
+        RETVALS = MIN_DISTANCE_FROM ( XX, item, D=D, PCA=Zz, do_plot=FALSE )
+        CLOSEST = RETVALS$minidx
+
+        CLUSTER_MAPPING = CIDX[CLOSEST]
+        ITER_MAPPING = append( ITER_MAPPING, CLUSTER_MAPPING )
+
+        # Zz1 = OLD_CENTROIDS[CLUSTER_MAPPING,] %*% Ureduce
+        # segments( Z[item,1], Z[item,2], x1=Zz1[1], y1=Zz1[2], col=CLOSEST+24, lwd=1 )
+
+        if ( do_plot ) 
+            DO_PCA_NEIGHBORING_PLOT( item , CLUSTER_MAPPING, Zz, new_plot=TRUE, col=CLOSEST + 24)
+
+        if ( debug ) 
+            print( paste( item, CLOSEST ) )
+    }
+    return ( ITER_MAPPING )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+DO_RECOMPUTE_CLUSTER_MEANS = function( X, CIDX, MAPPING, iter, method="centroids", useTrim=0.01, debug=FALSE ) {
+    START = TRUE
+
+    for ( cid in CIDX ) {
+        VITER_MAPPING = c(MAPPING[,iter])
+
+        WHICH_ROWS = names(which(VITER_MAPPING==cid))
+
+        if ( method == "centroids" )
+            MU = t(as.matrix( colMeans(X[WHICH_ROWS,], na.rm=TRUE ) ))
+        else
+            if ( method == "medoids" )
+                MU = t(as.matrix( apply(X[WHICH_ROWS,], 2, median)))
+            else 
+                MU = t(as.matrix( apply(X[WHICH_ROWS,], 2, mean, trim=useTrim)))
+
+        if ( debug ) { cat(HEADER); print ( cid ) ; print( WHICH_ROWS ) ; print( MU ) ; cat( HEADER ) }
+
+        if ( START ) {
+            START = FALSE
+            NEW_CENTROIDS = as.data.frame( MU )
+        } else  {
+            NEW_CENTROIDS = rbind( NEW_CENTROIDS, as.data.frame( MU ) )
+        }
+    }
+    rownames(NEW_CENTROIDS) = CIDX
+
+    return ( NEW_CENTROIDS )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+GET_ERROR_MEASUREMENT = function( NEW_CENTROIDS, OLD_CENTROIDS) {
+
+    FIN  = rowSums(as.matrix(OLD_CENTROIDS) %*% t(as.matrix(OLD_CENTROIDS))) - 
+           rowSums(as.matrix(NEW_CENTROIDS) %*% t(as.matrix(NEW_CENTROIDS)))
+
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+COMPUTE_JCOST = function( OLD_CENTROIDS, X, MAPPING, AT_ITER=1, debug=FALSE ) {
+    JCOST = 0
+
+    for ( cid in  CLUSTER_NAMES(1:K) ) {
+
+        WHICH_ONES = which( MAPPING[,AT_ITER] == cid )
+        if ( length(WHICH_ONES) == 0 ) next
+
+        MSE_TERMS = (X[WHICH_ONES,] - OLD_CENTROIDS[cid,])^2
+
+        if ( debug ) {
+            print ( paste( cid, WHICH_ONES, sep=":" ) )
+            print( sprintf( "%.5f", MSE_TERMS))
+        }
+
+        INCREMENT = sum(rowSums(MSE_TERMS))
+
+        JCOST = INCREMENT + JCOST
+
+        if ( debug )
+            print ( sprintf( "JCOST [CLUSTER: %5s, AT ITER=%5s; A CLUSTER WITH %5s SAMPLES ASSIGNED] = %8.4f --> JCOST (TOTAL) = %8.4f", cid, 
+                             AT_ITER, length(WHICH_ONES), INCREMENT, JCOST ) )
+
+    }
+
+    JCOST  = JCOST / nrow(X)
+
+    print ( sprintf( "JCOST [OVERALL AT ITER=%5s ] = %8.4f", AT_ITER, JCOST ) )
+    cat( HEADER )
+
+    return ( JCOST )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+ANALYZE_ENDING_CONDITION = function( iter, NEW_CENTROIDS, OLD_CENTROIDS, JCOSTS, EPSILON=5E-3, ITERMAX=300 ) {
+
+    ERROR = GET_ERROR_MEASUREMENT( NEW_CENTROIDS, OLD_CENTROIDS )
+
+    NEWLINE(1)
+    MSG = CONCAT( sprintf( "%2s DELTA=%6.3f; ", 1:nrow(NEW_CENTROIDS), ERROR ) )
+    print( paste( "ITER: ", iter, MSG )) 
+    print( NEW_CENTROIDS )
+    cat(HEADER)
+
+    END=FALSE
+    WHY=NA
+
+    Jn = length(JCOSTS)
+    FINAL_JCOST = JCOSTS[Jn]
+
+    DELTA_JCOST = Inf
+    if( Jn > 3 )
+        DELTA_JCOST  = mean(JCOSTS[(Jn-3):Jn])
+
+
+    if( FINAL_JCOST <= EPSILON ) {
+        END=TRUE
+        WHY=sprintf( "CONVERGED (JCOST OPTIMIZED):   ITER= %5d DELTA=%8.4f %8.4f [EPSILON=%s]", iter, ERROR, FINAL_JCOST, EPSILON )
+    }
+
+    if( DELTA_JCOST <= EPSILON ) {
+        END=TRUE
+        WHY=sprintf( "CONVERGED (JCOST CONVERGED):   ITER= %5d DELTA=%8.4f %8.4f [EPSILON=%s]", iter, ERROR, FINAL_JCOST, EPSILON )
+    }
+
+    if( all(abs(ERROR) <= EPSILON) ) {
+        END=TRUE
+        WHY=sprintf( "CONVERGED (CENTROID MOVEMENT): ITER= %5d DELTA=%8.4f %8.4f [EPSILON=%s]", iter, ERROR, FINAL_JCOST, EPSILON )
+    }
+
+    if ( iter > ITERMAX ) { 
+        END=TRUE
+        WHY=sprintf( "MAXITER, (DID NOT CONVERGE):   ITER= %5d DELTA=%8.4f %8.4f [EPSILON=%s]", iter, ERROR, FINAL_JCOST, EPSILON )
+    }
+
+    if ( END ) {
+        cat(HEADER)
+        cat(HEADER)
+        print( WHY )
+        cat(HEADER)
+        cat(HEADER)
+        cat(HEADER)
+    }
+
+    retvals = list( END=END, WHY=WHY, ERROR=ERROR )
+
+    return ( retvals )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+CLUSTER_NAMES = function( i ) { paste( "c", i, sep="" ) }
+# ######################################################################################################
+
+
+# ######################################################################################################
+DOMINANT_CLUSTER = function( m_row, debug=FALSE, get_type="cluster" ) {
+    m_categorized = table( m_row )
+    cluster_maxval = as.numeric(max( m_categorized ))
+    dominant_cluster = which( m_categorized== cluster_maxval )[1]
+    cluster_name = names(m_categorized)[dominant_cluster]
+    dominance = round( cluster_maxval / length(m_row), 4 ) * 100.0
+    if ( debug ) {
+        print( m_row )
+        print( m_categorized )
+        print( paste( 'max', cluster_maxval ) )
+        print( paste( 'dominant', cluster_name ) )
+        print( paste( cluster_name, dominance ) )
+        cat(HEADER)
+    }
+    if ( get_type == "cluster" )   retvals = as.character(cluster_name)
+    if ( get_type == "dominance" ) retvals = as.numeric(dominance)
+    return ( retvals )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+EXTRACT_CONVERGENCE_TERMS = function( M0, K, N_ITERS, field="ERROR", debug=FALSE ) {
+    a = c()
+    for ( i in 1:N_ITERS) {
+        fld = M0$METRICS[[i]]
+        vals =eval(parse( text=sprintf("fld$%s",field)))
+        if ( debug ) print( vals )
+        a = append(a, vals )
+    }
+
+    A = MATRIX( N_ITERS, K )
+    colnames(A) = CLUSTER_NAMES( 1:K )
+    rownames(A) = 1:N_ITERS
+
+    if ( field == "ERROR" ) {
+        for ( cid in  CLUSTER_NAMES( 1:K ) ) {
+            A[,cid] = a[which( names(a)==cid )]
+            if ( debug ) {
+                print ( cid )
+                print( which( names(a)==cid ) )
+                str(A)
+            }
+        }
+    }
+    return ( A )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+GET_NUMBER_ITERATIONS_TO_CONVERGENCE = function( M0 ) { IMAX = length(M0$METRICS) }
+# ######################################################################################################
+
+
+# ######################################################################################################
+GET_CLUSTER_MAPPINGS = function( M0 ) { MAPPINGS = M0$MAPPINGS }
+# ######################################################################################################
+
+
+# ######################################################################################################
+DO_DETAILED_DIAGNOSTICS = function( M0, psfile="clustering_methods.pdf" ) {
+    if ( psfile!="" ) pdf( psfile, 11, 8 ) 
+
+    IMAX  = GET_NUMBER_ITERATIONS_TO_CONVERGENCE( M0 )
+    WHICH_ITERS = 1:IMAX
+
+    ERROR = EXTRACT_CONVERGENCE_TERMS( M0, K, IMAX, field="ERROR" )
+
+    M = GET_CLUSTER_MAPPINGS( M0 )
+    M = M[,WHICH_ITERS]
+
+    CLUSTER_MEMBERSHIP = COLLECT_VECTOR( M, APPLY_F=DOMINANT_CLUSTER, get_type="cluster" )
+    CLUSTER_DOMINANCE  = COLLECT_VECTOR( M, APPLY_F=DOMINANT_CLUSTER, get_type="dominance" )
+    CLUSTER_MEMBERSHIP_INCONSISTENCY = data.frame( 'CLUSTER'  =CLUSTER_MEMBERSHIP, 'INCONSISTENCY IN SAMPLE-TO-CLUSTER ASSIGNMENTS'=100-CLUSTER_DOMINANCE )
+
+    CLUSTER_SIZE_AT_EACH_ITER = apply( M[,WHICH_ITERS], 2, table )
+    colnames(CLUSTER_SIZE_AT_EACH_ITER) = paste(WHICH_ITERS)
+
+    ASSIGMENT_HOMEGENOUSNESS  = apply( M, 1, table )
+
+    par( mfrow=c(2,2))
+        plot( WHICH_ITERS, sqrt(M0$JCOSTS), pch=23, bg="gray", t="b", cex=0.8, 
+             main=sprintf("ERROR BEING MINIMIZED BY \nSAMPLE-TO-CLUSTER ASSIGNMENTS AT EACH ITERATION"),
+             ylab=sprintf("ERROR [JCOST(KMEANS(K=%s)]",K),
+             xlab="ITERATION NUMBER")
+         grid()
+ 
+        # http://stackoverflow.com/questions/18688847/position-legend-of-a-stacked-bar-plot 
+        barplot( CLUSTER_SIZE_AT_EACH_ITER, 
+         beside=T, 
+         cex=0.8, 
+         cex.axis=0.8, 
+         las=2,
+         main="CLUSTER SIZE AT EACH ITERATION", 
+         xlab="ITERATION NUMBER", 
+         ylab="CLUSTER SIZE",
+         legend=rownames(CLUSTER_SIZE_AT_EACH_ITER),
+         args.legend = list(x = "topright", bty = "n", inset=c(-.03, 0)))
+
+        plot( CLUSTER_MEMBERSHIP_INCONSISTENCY, main="OBSERVED INCONSISTENCY\nIN CLUSTER ASSIGNMENTS", cex=0.8, ylim=c(0,100) )
+         grid()
+
+        PER_SAMPLE=2
+        hist( CLUSTER_MEMBERSHIP_INCONSISTENCY[,PER_SAMPLE], breaks=32, main="FREQUENCY OF OBSERVED INCONSISTENCY\nIN CLUSTER ASSIGNMENTS", cex=0.8)
+         grid()
+
+    ops = par( mfrow=c(3, 2) )
+    for ( i in 1:K ) {
+        plot( sqrt(abs(ERROR[,i])), t='l', main=sprintf("MOVEMENT OF CENTROID: c%s\nAT EACH ITERATION", i) )
+        grid()
+    }
+
+    par( ops )
+
+    if ( psfile!="" ) dev.off()
+
+}
+# ######################################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+# ######################################################################################################
+# ######################################################################################################
+# ######################################################################################################
+# ######################################################################################################
+# ######################################################################################################
+
+
+    X  = as.data.frame(GET_RANDOM_XY(1000,8))
+
+    K  = 5
+
+    # ######################################################################################################
+    # BEST USE FOR: Once K is determined for X, the detailed diagnostics provide insights about the clusters 
+    # ######################################################################################################
+    M0 = DO_DETAILED_INSIGHTS_KMEANS( X, K )
+    
+    DO_DETAILED_DIAGNOSTICS( M0, psfile="plot_clustering_methods_diagnostics.pdf" )
+
+
+sink()
+
+# ######################################################################################################
+# ######################################################################################################
+# ######################################################################################################
+# ######################################################################################################
+
+
+
+
 

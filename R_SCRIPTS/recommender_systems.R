@@ -22,6 +22,7 @@
 # @URL:     http://www.bitbucket.org/nelsonmanohar/machinelearning
 # ######################################################################################################
 sink( "output.recommender_system.out", split=TRUE )
+
 LICENSETEXT = "These R code samples (version Sep/2014), Copyright (C) Nelson R. Manohar,
 comes with ABSOLUTELY NO WARRANTY.  This is free software, and you are welcome to 
 redistribute it under conditions of the GNU General Public License." 
@@ -108,48 +109,54 @@ GET_XY_FOR_GENRE_AS_X_AND_USER_RATING_AS_Y = function( ORIG_RATINGS, NUSERS=100,
         WHICH_USERS  = RATINGS_RETVALS$WHICH_USERS
         WHICH_MOVIES = RATINGS_RETVALS$WHICH_MOVIES
 
-        X  = MOVIES[WHICH_MOVIES, c(1,6:ncol(M))] 
-        MU = matrix(apply(M2U,1,mean,na.rm=TRUE))
-        SD = matrix(apply(M2U,1,sd,  na.rm=TRUE))  
-        SD = ifelse( is.na(SD), 0, SD )
-        MIN= matrix(apply(M2U,1,min, na.rm=TRUE))
-        MAX= matrix(apply(M2U,1,max, na.rm=TRUE))
-        MED= matrix(apply(M2U,1,median, na.rm=TRUE))
-        RNG= MAX-MIN
-        RSD= SD/(RNG+1)
+        # ###########################################################################
+                               ##### ADDED FEATURES #####
+        # ###########################################################################
+            X  = MOVIES[WHICH_MOVIES, c(1,6:ncol(M))] 
 
-        if ( FALSE ) {
-            MU = MU + mean(MU,na.rm=TRUE)
-            SD = SD + mean(SD,na.rm=TRUE)
-        }
+            MU = matrix(apply(M2U,1,mean,  na.rm=TRUE))
+
+            SD = matrix(apply(M2U,1,sd,    na.rm=TRUE))  
+            SD = ifelse( is.na(SD), 0, SD )
+    
+            MIN= matrix(apply(M2U,1,min,   na.rm=TRUE))
+
+            MAX= matrix(apply(M2U,1,max,   na.rm=TRUE))
+
+            MED= matrix(apply(M2U,1,median,na.rm=TRUE))  * MAX / MIN
+
+            RNG= MAX-MIN
+
+            RSD= MU/(SD+1)
+
+            if ( FALSE ) {
+                MU = MU + mean(MU,na.rm=TRUE)
+                SD = SD + mean(SD,na.rm=TRUE)
+            }
+        # ###########################################################################
+                               ##### ADDED FEATURES #####
+        # ###########################################################################
+        NX = data.frame(            "rating_mean"=MU, 'rating_muvar'=RSD )
+        SUMMARY_STATS_COLNAMES = c( "rating_mean",    'rating_muvar')
+
 
         # ###########################################################################
         # BOOTSTRAP the FIRST generation of the PREDICTIVE FEATURES (i.e., GENREs) as 
         # the AVERAGE Rating BY THOSE WHO RATED THE MOVIE plus STD.DEV on such ratings
         # ###########################################################################
-        # NX = data.frame( "rating_mean"=MU, "rating_dev"=SD )
-
-        NX = data.frame( "rating_mean"=MU, "rating_dev"=SD, 'rating_min'=MIN, 'rating_max'=MAX, 'rating_range'=RNG, 'rating_median'=MED, 'rating_varratio'=RSD )
-
         for( i in 2:ncol(X)) {
             Xi = matrix(X[,i])
-
-            if ( TRUE ) 
-                Xi = Xi * ( MU+SD )/MU
-
+            if ( TRUE ) Xi = Xi * MU/(SD+1)
             NX = cbind( NX, Xi )
         }
 
-        summary_stats_colnames = c( "rating_mean", "rating_dev" )
-        summary_stats_colnames = append( summary_stats_colnames, c( 'rating_min', 'rating_max', 'rating_range', 'rating_median', 'rating_varratio') )
-
-        colnames(NX) = c( summary_stats_colnames, colnames(MOVIES[c(6:ncol(M))]))
+        colnames(NX) = c( SUMMARY_STATS_COLNAMES, colnames(MOVIES[c(6:ncol(M))]))
         rownames(NX) = rownames(M2U)
 
-        # NX = NX[,3:ncol(NX)]
-
     retvals = list ( 'X'=NX, 'Y'=Y, 'WHICH_USERS'=WHICH_USERS, 'WHICH_MOVIES'=WHICH_MOVIES )
+
     if ( debug ) str(retvals)
+
     return ( retvals )
 }
 # ###################################################################################################
@@ -630,7 +637,6 @@ WHICH_ONES_TO_RECOMMEND = function( USER1, USER2, SAME, MORE, D=matrix(), Z=matr
 
     MOVIE_DISTANCE_GOAL = 1.01 * min(D3) 
 
-    UPDATE_MAPPING( mtype="UU1", USER1,    USER2 )          # UUMAP[ USER1, USER2] <<- UUMAP[ USER1, USER2] + 1
     D_RETVALS = WHICH_MOVIES_FROM_THIS_USER_ARE_CLOSE( USER1, USER2, D3, Z, MOVIE_DISTANCE_GOAL )
 
     if ( debug ) print ( D_RETVALS )
@@ -650,7 +656,6 @@ WHICH_MOVIES_FROM_THIS_USER_ARE_CLOSE = function( USER1, USER2, D3, Z2, distance
     if ( class(min_inds)  != "matrix" ) 
         return ( RECOMMENDATIONS )
 
-
     START = TRUE
     for ( ix in 1:min(nrow( min_inds ),nmax) ) {
         U1_MOVIE = min_inds[ix,1]
@@ -666,13 +671,9 @@ WHICH_MOVIES_FROM_THIS_USER_ARE_CLOSE = function( USER1, USER2, D3, Z2, distance
             RECOMMENDATIONS = rbind( RECOMMENDATIONS, 
                               data.frame( 'BECAUSE_YOU_WATCHED'=U1_MOVIE, 'RECOMMENDATION'=U2_MOVIE, 'RATINGS'=RATING, 'IDX'=min_inds[ix,] ) )
 
-        if ( ix == 1 ) {
-            UPDATE_MAPPING( mtype="MM1", U1_MOVIE, U2_MOVIE )     # MMMAP[ U1_MOVIE, U2_MOVIE] <<- MMMAP[ U1_MOVIE, U2_MOVIE] + 1
-            UPDATE_MAPPING( mtype="UM1", USER1,    U2_MOVIE)      # UMMAP[COMPARISON_USER,REC_TOPMOST]<<-UMMAP[COMPARISON_USER,REC_TOPMOST]+1
-        } else {
-            UPDATE_MAPPING( mtype="MM2", U1_MOVIE, U2_MOVIE )     # MMMAP[ U1_MOVIE, U2_MOVIE] <<- MMMAP[ U1_MOVIE, U2_MOVIE] + 1
-            UPDATE_MAPPING( mtype="UM2", USER1,    U2_MOVIE)      # UMMAP[COMPARISON_USER,REC_TOPMOST]<<-UMMAP[COMPARISON_USER,REC_TOPMOST]+1
-        }
+        UPDATE_MAPPING( mtype="UU1", USER1,    USER2 )        
+        UPDATE_MAPPING( mtype="MM1", U1_MOVIE, U2_MOVIE )     
+        UPDATE_MAPPING( mtype="UM1", USER1,    U2_MOVIE )      
 
         if ( ix == 2 ) {
             cat(HEADER)
@@ -718,7 +719,6 @@ FIND_ALTERNATIVE_RECOMMENDATION_WRT = function( USER1, CLOSEST ) { # , D1, Z1, D
         SDS_SAME = SDS_RETVALS$SAME
         SDS_MORE = SDS_RETVALS$MORE
 
-    UPDATE_MAPPING( mtype="UU2", USER1, SDS_CLOSEST)          # UUMAP[ USER1, USER2] <<- UUMAP[ USER1, USER2] + 1
     SDS_RECOMMENDED_FOR_USER = WHICH_ONES_TO_RECOMMEND( USER1, SDS_CLOSEST, SDS_SAME, SDS_MORE, D=D2, Z=Z2 )
 
     if ( HOW_MANY_RECOMMENDATION_WERE_FOUND(SDS_RECOMMENDED_FOR_USER) == 0 )
@@ -1039,6 +1039,8 @@ if ( CHECK_RECOMMENDATIONS ) {
     # ###################################################################################################
     SAMPLED_MOVIES = sample( colnames(RECOMMENDATIONS_FOR_U2M_RATINGS), 
                                  nrow(RECOMMENDATIONS_FOR_U2M_RATINGS))
+    MOST_POPULAR   = names(sort( c(colSums(ORIG_RATINGS,na.rm=TRUE)), decreasing=TRUE))[1:nrow(RECOMMENDATIONS_FOR_U2M_RATINGS)]
+    SAMPLED_MOVIES = MOST_POPULAR
     # ###################################################################################################
 
     # ###################################################################################################
@@ -1063,11 +1065,6 @@ if ( CHECK_RECOMMENDATIONS ) {
     UMMAP1 <<- ifelse(RU2M,0,0)
     MUMAP1 <<- ifelse(RM2U,0,0)
 
-    UUMAP2 <<- ifelse(D1,0,0)
-    MMMAP2 <<- ifelse(D2,0,0)
-    UMMAP2 <<- ifelse(RU2M,0,0)
-    MUMAP2 <<- ifelse(RM2U,0,0)
-
     DO_PCA_FULL_PLOT( Z2, nmax=2000, cex=0.4, pch="o", xlim=c(-PCA_PLOT_LIMITS,PCA_PLOT_LIMITS), 
                                                        ylim=c(-PCA_PLOT_LIMITS,PCA_PLOT_LIMITS) )
 
@@ -1090,10 +1087,11 @@ if ( CHECK_RECOMMENDATIONS ) {
 
     # ###################################################################################################
     if ( DO_PDF ) { 
-        dev.copy(pdf, 'plot_recommendation_neighborhood_collabfilt.pdf' )
-        dev.off()
+        cat( HEADER )
+        # dev.copy(pdf, 'plot_recommendation_neighborhood_collabfilt.pdf' )
+        # dev.off()
+        # print( "PDF FILE contains plot of the resulting recommendation neighborhood: plot_recommendation_neighborhood_collabfilt.pdf" )
     }
-    print( "PDF FILE contains plot of the resulting recommendation neighborhood: plot_recommendation_neighborhood_collabfilt.pdf" )
     # ###################################################################################################
 
     # ###################################################################################################
@@ -1101,21 +1099,13 @@ if ( CHECK_RECOMMENDATIONS ) {
     MM1 = BUILD_EDGELIST(MMMAP1,    PIVOT=1)
     UM1 = BUILD_EDGELIST(UMMAP1,    PIVOT=1)
     # ###################################################################################################
-    UU2 = BUILD_EDGELIST(UUMAP2,    PIVOT=1)
-    MM2 = BUILD_EDGELIST(MMMAP2,    PIVOT=1)
-    UM2 = BUILD_EDGELIST(UMMAP2,    PIVOT=1)
-    # ###################################################################################################
     
     # ###################################################################################################
-    sink( 'output_mappings_collabfilt.out' )
+    sink( 'output_mappings_collabfilt.out', split=TRUE )
     HEADING( "TIER 1" )
     EXTRACT_MAPPINGS( MM1, TITLE="TIER_1 MOVIE RECOMMENDATIONS",         MAPPER=MOVIE_COMPARATOR,  TIER=1 )
     EXTRACT_MAPPINGS( UU1, TITLE="TIER_1 USER RECOMMENDATIONS",          MAPPER=USER_COMPARATOR,   TIER=1 )
     EXTRACT_MAPPINGS( UM1, TITLE="TIER_1 USER TO MOVIE RECOMMENDATIONS", MAPPER=USER2MOVIE_PRINTER,TIER=1 )
-    HEADING( "TIER 2" )
-    EXTRACT_MAPPINGS( MM2, TITLE="TIER_2 MOVIE RECOMMENDATIONS",         MAPPER=MOVIE_COMPARATOR,  TIER=2 )
-    EXTRACT_MAPPINGS( UU2, TITLE="TIER_2 USER RECOMMENDATIONS",          MAPPER=USER_COMPARATOR,   TIER=2 )
-    EXTRACT_MAPPINGS( UM2, TITLE="TIER_2 USER TO MOVIE RECOMMENDATIONS", MAPPER=USER2MOVIE_PRINTER,TIER=2 )
     sink( )
     # ###################################################################################################
 
@@ -1125,9 +1115,18 @@ if ( CHECK_RECOMMENDATIONS ) {
 
         pdf( 'plot_recommendation_network_collabfilt.pdf', 11, 11 )
 
-            PLOT_MATRIX( UUMAP1, layout=layout.fruchterman.reingold ) #layout.svd )
+            g1 = PLOT_MATRIX( UUMAP1, VNAMES=rownames(UUMAP1), layout=layout.fruchterman.reingold, WHO="USERS" )
+            summary(g1)
 
-            PLOT_MATRIX( MMMAP1, layout=layout.fruchterman.reingold )
+            g2 = PLOT_MATRIX( MMMAP1, VNAMES=rownames(MMMAP1), layout=layout.fruchterman.reingold, WHO="MOVIES" )
+            summary(g2)
+
+            XYZ = rbind( cbind( ZERO_CLONE( UUMAP1 ),              UMMAP1 ),        
+                         cbind(           t(UMMAP1),   ZERO_CLONE( MMMAP1 )) )
+
+            g3 = PLOT_MATRIX( XYZ,    VNAMES=c(rownames(UMMAP1),colnames(UMMAP1)), 
+                                                          layout=layout.fruchterman.reingold, WHO="USER-to-MOVIES" )
+            summary(g3)
 
         dev.off()
     }
