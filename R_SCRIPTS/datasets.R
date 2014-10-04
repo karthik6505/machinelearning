@@ -501,9 +501,10 @@ BUILD_MOVIELENS_DATASET = function( ) {
 
 # ######################################################################################################
 GET_RANDOM_XY = function( M=1000, N=8 ) {
-    set.seed( as.integer(proc.time()[3]%%16383) )
-    u  = round(runif(N, 1, 4))
-    d  = round(runif(N, 1, 3))
+    set.seed( as.integer( (proc.time()[3] * 4096 ) %% 16384 ) )
+
+    u  = round(runif(N, 2, 5))
+    d  = round(runif(N, 1, 2))
 
     XX = MATRIX(M, N)
     for ( i in 1:N) {

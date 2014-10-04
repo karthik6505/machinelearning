@@ -88,7 +88,7 @@ DO_KMEANS = function( mydata, K, nstarts=100, ... ) {
 # ######################################################################################################
 # retvals = list( 'MAPPINGS'=MAPPING, 'CENTROIDS'=CENTROIDS 'METRICS'=list( END=END, WHY=WHY, ERROR=ERROR ))
 # ######################################################################################################
-KMEANS_ITERATOR = function( X, K, do_scaling=TRUE, do_plot=FALSE, transforms="in_pca_domain,in_probas_domain", nstarts=100, vargoal=0.999, EPSILON=5E-3, debug=FALSE ) {
+KMEANS_ITERATOR = function( X, K, do_scaling=TRUE, do_plot=FALSE, transforms="in_pca_domain,in_probas_domain", nstarts=100, vargoal=0.999, EPSILON=1E-2, debug=FALSE ) {
     ITERATION = list()
     for ( i in 1:nstarts ) {
         RETVALS = DO_KMEANS2( Xdf, K, do_scaling, do_plot, transforms, vargoal, EPSILON, debug )
@@ -103,7 +103,28 @@ KMEANS_ITERATOR = function( X, K, do_scaling=TRUE, do_plot=FALSE, transforms="in
     
 
 # ######################################################################################################
-DO_DETAILED_INSIGHTS_KMEANS = function( Xdf, K, do_scaling=TRUE, do_plot=FALSE, transforms="in_pca_domain,in_probas_domain", vargoal=0.999, EPSILON=5E-3, debug=FALSE) {
+GET_PCA_PLOT_VALUES = function( Ureduce, MAT ) {
+    k = ncol(Ureduce)
+    p = nrow(MAT)
+    ZZ = MATRIX( p, k )
+    for ( i in 1:p )
+        ZZ[i, ] = t(Ureduce) %*% MAT[i,]
+    return( ZZ )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+DO_DETAILED_INSIGHTS_KMEANS = function( Xdf, K, 
+                                        CENTROIDS =matrix(),
+                                        do_scaling=TRUE, 
+                                        EPSILON=5E-3, 
+                                        do_plot=TRUE, 
+                                        transforms="in_pca_domain, in_probas_domain", 
+                                        vargoal=0.60, 
+                                        LIMIT=3,
+                                        MAX_ITER=50,
+                                        debug=FALSE  ) {
 
     opts = options( digits=2, width=132 )
 
@@ -116,54 +137,63 @@ DO_DETAILED_INSIGHTS_KMEANS = function( Xdf, K, do_scaling=TRUE, do_plot=FALSE, 
 
     ITEMS = rownames(X)
     M     = length(ITEMS)
-    N_ITER= 100
 
-    CIDX      = sample(ITEMS,K) 
-    CENTROIDS = X[c(CIDX),]
-    rownames(CENTROIDS) = CLUSTER_NAMES( 1:K )
-    CIDX  = rownames(CENTROIDS)
+    if ( nrow(CENTROIDS)!= K ) {
+        if ( nrow(CENTROIDS)!=K ) print( "USING RANDOM SAMPLES AS CENTROIDS" )
+        INITIAL_RANDOM_CENTERS = sample(ITEMS, K) 
+        CENTROIDS = X[INITIAL_RANDOM_CENTERS,]
+    }
+    rownames(CENTROIDS)    = CLUSTER_NAMES( 1:K )
+    CIDX                   = CLUSTER_NAMES( 1:K )
+    CENTROID_COLORS        = 1:K
+    names(CENTROID_COLORS) = CLUSTER_NAMES( 1:K )
 
     OLD_CENTROIDS = CENTROIDS
 
-    MAPPING = MATRIX( M, N_ITER )
-
-    rownames(MAPPING) = rownames(X)
+    MAPPING = MATRIX( M, MAX_ITER )
+        rownames(MAPPING) = rownames(X)
 
     METRICS = list()
 
     JCOSTS = c()
 
-    for (iter in 1:N_ITER ) {
-        ITER_MAPPING = DO_KMEANS_CLUSTER_ASSIGNMENT( X, ITEMS, CIDX, OLD_CENTROIDS, do_plot=do_plot )
+    if ( do_plot ) {
+        print( 'PDF FILE: plot_clustering_methods_cluster_assignments.pdf shows cluster assignments at each iteration' )
+        pdf( 'plot_clustering_methods_cluster_assignments.pdf', 11, 8 )
+        op = par( mfcol=c(2,2) )
+    }
 
+    for (iter in 1:MAX_ITER ) {
+        ITER_MAPPING = DO_KMEANS_CLUSTER_ASSIGNMENT( X, ITEMS, CIDX, OLD_CENTROIDS )
         MAPPING[,iter] = ITER_MAPPING
 
-        JCOST = COMPUTE_JCOST( OLD_CENTROIDS, X, MAPPING, AT_ITER=iter )
+        if ( do_plot ) {
+            Z = DO_PCA( rbind(X, OLD_CENTROIDS), vargoal=vargoal, silent=TRUE, debug=FALSE )$Z
+            COLORS = append(CENTROID_COLORS[MAPPING[,iter]] + 10, rep("black", K ))
+            SYMBOLS= append(CENTROID_COLORS[MAPPING[,iter]] + 10, rep(1,K))
+            SIZES  = append(rep(0.6, nrow(X)),                    rep(3.0, K ) )
+            plot( Z[,1], Z[,2], main=paste("CLUSTER_ASSIGNMENTS WITHIN PCA(X,2) SPACE at ITERATION", iter), 
+                                cex=SIZES, pch=SYMBOLS, col=COLORS, xlim=c(-LIMIT,LIMIT), ylim=c(-LIMIT,LIMIT) )
+        }
 
+        JCOST = COMPUTE_JCOST( OLD_CENTROIDS, X, MAPPING, AT_ITER=iter )
         JCOSTS = append( JCOSTS, JCOST )
 
         NEW_CENTROIDS = DO_RECOMPUTE_CLUSTER_MEANS( X, CIDX, MAPPING, iter )
 
         RETVALS = ANALYZE_ENDING_CONDITION( iter, NEW_CENTROIDS, OLD_CENTROIDS, JCOSTS, EPSILON=EPSILON )
-
         METRICS[[iter]] = RETVALS
-
-        if ( RETVALS$END ) {
-            print ( RETVALS$WHY )
+        if ( RETVALS$END )
             break
-        }
 
         OLD_CENTROIDS = NEW_CENTROIDS
     }
 
-    retvals = list( 'MAPPINGS'=MAPPING, 'CENTROIDS'=CENTROIDS, 'METRICS'=METRICS, 'JCOSTS'=JCOSTS )
+    retvals = list( 'MAPPINGS'=MAPPING, 'CENTROIDS'=NEW_CENTROIDS, 'METRICS'=METRICS, 'JCOSTS'=JCOSTS )
 
     if ( do_plot ) dev.off()
-    options( opts )
 
-    cat( HEADER )
-    cat( HEADER )
-    cat( HEADER )
+    options( opts )
 
     return ( retvals )
 }
@@ -178,12 +208,12 @@ DO_KMEANS_CLUSTER_ASSIGNMENT = function( X, ITEMS, CIDX, OLD_CENTROIDS, do_plot=
         rownames(XXX) = c( rownames(X), CIDX ) 
         colnames(XXX) = colnames( X )
 
-    PCA = DO_PCA( XXX, vargoal=vargoal, silent=TRUE, debug=FALSE )
-    Z = PCA$Z
-    Ureduce = PCA$Ureduce
-
-    if ( do_plot ) 
+    if ( do_plot ) {
+        PCA = DO_PCA( XXX, vargoal=vargoal, silent=TRUE, debug=FALSE )
+        Z = PCA$Z
+        Ureduce = PCA$Ureduce
         DO_PCA_FULL_PLOT( Z, cex=0.8 ) #, xlim=c(-15,15), ylim=c(-15,15) )
+    }
 
     for ( item in ITEMS ) {
         XX = rbind( OLD_CENTROIDS, X[item,] )
@@ -192,19 +222,12 @@ DO_KMEANS_CLUSTER_ASSIGNMENT = function( X, ITEMS, CIDX, OLD_CENTROIDS, do_plot=
         D = dist( XX )
 
         Zz = matrix()
-        if ( do_plot ) Zz = XX %*% Ureduce
 
         RETVALS = MIN_DISTANCE_FROM ( XX, item, D=D, PCA=Zz, do_plot=FALSE )
         CLOSEST = RETVALS$minidx
 
         CLUSTER_MAPPING = CIDX[CLOSEST]
         ITER_MAPPING = append( ITER_MAPPING, CLUSTER_MAPPING )
-
-        # Zz1 = OLD_CENTROIDS[CLUSTER_MAPPING,] %*% Ureduce
-        # segments( Z[item,1], Z[item,2], x1=Zz1[1], y1=Zz1[2], col=CLOSEST+24, lwd=1 )
-
-        if ( do_plot ) 
-            DO_PCA_NEIGHBORING_PLOT( item , CLUSTER_MAPPING, Zz, new_plot=TRUE, col=CLOSEST + 24)
 
         if ( debug ) 
             print( paste( item, CLOSEST ) )
@@ -277,9 +300,8 @@ COMPUTE_JCOST = function( OLD_CENTROIDS, X, MAPPING, AT_ITER=1, debug=FALSE ) {
 
         JCOST = INCREMENT + JCOST
 
-        if ( debug )
-            print ( sprintf( "JCOST [CLUSTER: %5s, AT ITER=%5s; A CLUSTER WITH %5s SAMPLES ASSIGNED] = %8.4f --> JCOST (TOTAL) = %8.4f", cid, 
-                             AT_ITER, length(WHICH_ONES), INCREMENT, JCOST ) )
+        print ( sprintf( "JCOST [CLUSTER: %5s, AT ITER=%5s; A CLUSTER WITH %5s SAMPLES ASSIGNED] = %8.4f --> JCOST (TOTAL) = %8.4f WITHIN = %8.4f", 
+                          cid, AT_ITER, length(WHICH_ONES), INCREMENT, JCOST, INCREMENT/length(WHICH_ONES) ) )
 
     }
 
@@ -294,15 +316,18 @@ COMPUTE_JCOST = function( OLD_CENTROIDS, X, MAPPING, AT_ITER=1, debug=FALSE ) {
 
 
 # ######################################################################################################
-ANALYZE_ENDING_CONDITION = function( iter, NEW_CENTROIDS, OLD_CENTROIDS, JCOSTS, EPSILON=5E-3, ITERMAX=300 ) {
+ANALYZE_ENDING_CONDITION = function( iter, NEW_CENTROIDS, OLD_CENTROIDS, JCOSTS, EPSILON=1E-2, ITERMAX=300 ) {
 
     ERROR = GET_ERROR_MEASUREMENT( NEW_CENTROIDS, OLD_CENTROIDS )
 
-    NEWLINE(1)
+    NEWLINE(3)
     MSG = CONCAT( sprintf( "%2s DELTA=%6.3f; ", 1:nrow(NEW_CENTROIDS), ERROR ) )
-    print( paste( "ITER: ", iter, MSG )) 
-    print( NEW_CENTROIDS )
     cat(HEADER)
+    print( paste( "ITER: ", iter, MSG )) 
+
+    cat(SUBHEADER)
+    print( NEW_CENTROIDS )
+    cat(SUBHEADER)
 
     END=FALSE
     WHY=NA
@@ -337,6 +362,7 @@ ANALYZE_ENDING_CONDITION = function( iter, NEW_CENTROIDS, OLD_CENTROIDS, JCOSTS,
 
     if ( END ) {
         cat(HEADER)
+        NEWLINE(3)
         cat(HEADER)
         print( WHY )
         cat(HEADER)
@@ -419,7 +445,10 @@ GET_CLUSTER_MAPPINGS = function( M0 ) { MAPPINGS = M0$MAPPINGS }
 
 # ######################################################################################################
 DO_DETAILED_DIAGNOSTICS = function( M0, psfile="clustering_methods.pdf" ) {
-    if ( psfile!="" ) pdf( psfile, 11, 8 ) 
+    if ( psfile!="" )  {
+        pdf( psfile, 11, 8 ) 
+        print( paste( 'PDF FILE:', psfile, 'provides with detailed diagnostics plots' ) )
+    }
 
     IMAX  = GET_NUMBER_ITERATIONS_TO_CONVERGENCE( M0 )
     WHICH_ITERS = 1:IMAX
@@ -497,7 +526,7 @@ DO_DETAILED_DIAGNOSTICS = function( M0, psfile="clustering_methods.pdf" ) {
 
     X  = as.data.frame(GET_RANDOM_XY(1000,8))
 
-    K  = 5
+    K  = 3
 
     # ######################################################################################################
     # BEST USE FOR: Once K is determined for X, the detailed diagnostics provide insights about the clusters 

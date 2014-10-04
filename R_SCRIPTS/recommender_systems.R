@@ -911,7 +911,7 @@ if ( BUILD_RECOMMENDATIONS ) {
     # ###################################################################################################
     N_USERS_TO_USE  = as.integer(1000 * 1.0)
     N_MOVIES_TO_USE = as.integer(3000 * 1.0)
-        EPSILON      = 1E-2
+        EPSILON      = 5E-4
         REGPARAM     = 1E-1
         N_ITER       = 50
         DO_PDF       = TRUE
