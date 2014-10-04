@@ -500,19 +500,22 @@ BUILD_MOVIELENS_DATASET = function( ) {
 
 
 # ######################################################################################################
-GET_RANDOM_XY = function( M=1000, N=8 ) {
+GET_RANDOM_XY = function( M=1000, N=5 ) {
+
     set.seed( as.integer( (proc.time()[3] * 4096 ) %% 16384 ) )
 
-    u  = round(runif(N, 2, 5))
-    d  = round(runif(N, 1, 2))
+    u  = seq(1,4*N,4)
+    d  = rep(0.1,N )
 
     XX = MATRIX(M, N)
+
     for ( i in 1:N) {
-        l = max( 1, abs(u[i]-d[i]) )
-        h = max( u[i]+d[i], l+1)
-        XX[,i] = rnorm( M, l, h )
-        print( sprintf( "V[%s] = rnorm( %s %s %s )", i, M, l, h ))
+        m = u[i]
+        s = d[i]
+        XX[,i] = rnorm( M, m, s )
+        print( sprintf( "V[%s] = rnorm( %s %s %s )", i, M, m, s ))
     }
+
     return ( XX )
 }
 # ######################################################################################################

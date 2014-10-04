@@ -21,8 +21,6 @@
 # @DATE:    September, 2014
 # @URL:     http://www.bitbucket.org/nelsonmanohar/machinelearning
 # ######################################################################################################
-sink( "output_clustering_methods_diagnostics.out", split=TRUE )
-
 LICENSETEXT = "These R code samples (version Sep/2014), Copyright (C) Nelson R. Manohar,
 comes with ABSOLUTELY NO WARRANTY.  This is free software, and you are welcome to 
 redistribute it under conditions of the GNU General Public License." 
@@ -38,8 +36,14 @@ commandArgs <- function() list(TEST_ENABLED=FALSE, DO_DISTANCE_VALIDATION=FALSE,
 
 
 # ######################################################################################################
+VARGOAL=0.95
+# ######################################################################################################
+
+# ######################################################################################################
+require(graphics)
 source('utilities.R')
 source('distances.R')
+source('datasets.R')
 # ######################################################################################################
 
 
@@ -77,10 +81,68 @@ FIND_WSS_BEND = function( mydata ) {
 
 
 # ######################################################################################################
-# K-Means Cluster Analysis
+# sum of squares
 # ######################################################################################################
-DO_KMEANS = function( mydata, K, nstarts=100, ... ) {
-    fit <- kmeans(mydata, K, ...) 
+ss <- function(x) sum(scale(x, scale = FALSE)^2)
+# ######################################################################################################
+
+
+# ######################################################################################################
+# K-Means Cluster Analysis
+# http://stat.ethz.ch/R-manual/R-devel/library/stats/html/kmeans.html
+# ######################################################################################################
+DO_KMEANS = function( x=matrix(), K=3, nstarts=30, do_scaling=FALSE, do_plot=TRUE, ... ) {
+    if ( nrow(x) == 0 ) {
+        # a 2-dimensional example
+        x <- rbind(matrix(rnorm(100, mean = 0, sd = 0.3), ncol = 2),
+                   matrix(rnorm(100, mean = 1, sd = 0.3), ncol = 2))
+        colnames(x) <- c("x", "y")
+        rownames(x) <- 1:nrow(x)
+    }
+
+    if ( do_scaling )
+        x = scale( x )
+
+    cat(HEADER)
+    cat(HEADER)
+    cat(HEADER)
+
+    (KMEANS_FIT <- kmeans( x, K, nstart=nstarts, ... ))
+    print( KMEANS_FIT )
+
+    if ( do_plot ) {
+        plot(x, col = KMEANS_FIT$cluster, pch=KMEANS_FIT$cluster, cex=0.8 )
+        points(KMEANS_FIT$centers, col = rep("blue",K), pch = 'o', cex = 3.0)
+    }
+
+    ## cluster centers "fitted" to each obs.:
+    fitted.x <- fitted(KMEANS_FIT)
+    head(fitted.x)
+    resid.x  <- x - fitted(KMEANS_FIT)
+
+    ## Equalities : ----------------------------------
+    cbind(KMEANS_FIT[c("betweenss", "tot.withinss", "totss")], # the same two columns
+                     c(ss(fitted.x), ss(resid.x),    ss(x)))
+
+    stopifnot(all.equal(KMEANS_FIT$ totss,        ss(x)), 
+              all.equal(KMEANS_FIT$ tot.withinss, ss(resid.x)),
+	            ## these three are the same:
+	            all.equal(KMEANS_FIT$ betweenss,    ss(fitted.x)),
+	            all.equal(KMEANS_FIT$ betweenss, KMEANS_FIT$totss - KMEANS_FIT$tot.withinss),
+	            all.equal(ss(x), ss(fitted.x) + ss(resid.x))
+	         )
+
+    # trivial one-cluster, (its W.SS == ss(x))
+    print( kmeans(x,1)$withinss ) 
+
+    cat(HEADER)
+    cat(HEADER)
+    cat(HEADER)
+    NEWLINE(3)
+
+    retvals = list( 'FIT'=KMEANS_FIT )
+
+    return ( retvals )
 }
 # ######################################################################################################
 
@@ -88,10 +150,18 @@ DO_KMEANS = function( mydata, K, nstarts=100, ... ) {
 # ######################################################################################################
 # retvals = list( 'MAPPINGS'=MAPPING, 'CENTROIDS'=CENTROIDS 'METRICS'=list( END=END, WHY=WHY, ERROR=ERROR ))
 # ######################################################################################################
-KMEANS_ITERATOR = function( X, K, do_scaling=TRUE, do_plot=FALSE, transforms="in_pca_domain,in_probas_domain", nstarts=100, vargoal=0.999, EPSILON=1E-2, debug=FALSE ) {
+KMEANS_ITERATOR = function( X, K, CENTROIDS=matrix(), do_scaling=TRUE, do_plot=FALSE, transforms="in_pca_domain,in_probas_domain", nstarts=100, vargoal=VARGOAL, EPSILON=1E-3, LIMIT=3, MAX_ITER=30, debug=FALSE ) {
     ITERATION = list()
     for ( i in 1:nstarts ) {
-        RETVALS = DO_KMEANS2( Xdf, K, do_scaling, do_plot, transforms, vargoal, EPSILON, debug )
+        RETVALS = DO_DETAILED_INSIGHTS_KMEANS( Xdf, K, CENTROIDS,
+                                            do_scaling,
+                                            EPSILON,
+                                            do_plot,
+                                            transforms,
+                                            vargoal,
+                                            LIMIT,
+                                            MAX_ITER,
+                                            debug )
         ITERATION[[i]] = RETVALS
     }
 
@@ -103,35 +173,33 @@ KMEANS_ITERATOR = function( X, K, do_scaling=TRUE, do_plot=FALSE, transforms="in
     
 
 # ######################################################################################################
-GET_PCA_PLOT_VALUES = function( Ureduce, MAT ) {
-    k = ncol(Ureduce)
-    p = nrow(MAT)
-    ZZ = MATRIX( p, k )
-    for ( i in 1:p )
-        ZZ[i, ] = t(Ureduce) %*% MAT[i,]
-    return( ZZ )
-}
-# ######################################################################################################
-
-
+# BEST USE FOR: Once K is determined for X, the detailed diagnostics provide insights about the clusters 
 # ######################################################################################################
 DO_DETAILED_INSIGHTS_KMEANS = function( Xdf, K, 
                                         CENTROIDS =matrix(),
                                         do_scaling=TRUE, 
-                                        EPSILON=5E-3, 
+                                        EPSILON=1E-3, 
                                         do_plot=TRUE, 
                                         transforms="in_pca_domain, in_probas_domain", 
-                                        vargoal=0.60, 
+                                        vargoal=VARGOAL, 
                                         LIMIT=3,
                                         MAX_ITER=50,
                                         debug=FALSE  ) {
 
     opts = options( digits=2, width=132 )
 
+    if( is.null(rownames(Xdf)) ) rownames(Xdf) = 1:nrow(Xdf)
+    if( is.null(colnames(Xdf)) ) colnames(Xdf) = 1:ncol(Xdf)
+
+    MU = c()
+    SD = c()
     if ( do_scaling ) {
         X = as.matrix(scale(Xdf))
         colnames(X) = colnames(Xdf)
         rownames(X) = rownames(Xdf)
+
+        MU = attr(X,"scaled:center")
+        SD = attr(X,"scaled:scale")
     } 
     str(X)
 
@@ -169,7 +237,7 @@ DO_DETAILED_INSIGHTS_KMEANS = function( Xdf, K,
 
         if ( do_plot ) {
             Z = DO_PCA( rbind(X, OLD_CENTROIDS), vargoal=vargoal, silent=TRUE, debug=FALSE )$Z
-            COLORS = append(CENTROID_COLORS[MAPPING[,iter]] + 10, rep("black", K ))
+            COLORS = append(CENTROID_COLORS[MAPPING[,iter]] + 1,  rep("black", K ))
             SYMBOLS= append(CENTROID_COLORS[MAPPING[,iter]] + 10, rep(1,K))
             SIZES  = append(rep(0.6, nrow(X)),                    rep(3.0, K ) )
             plot( Z[,1], Z[,2], main=paste("CLUSTER_ASSIGNMENTS WITHIN PCA(X,2) SPACE at ITERATION", iter), 
@@ -183,13 +251,15 @@ DO_DETAILED_INSIGHTS_KMEANS = function( Xdf, K,
 
         RETVALS = ANALYZE_ENDING_CONDITION( iter, NEW_CENTROIDS, OLD_CENTROIDS, JCOSTS, EPSILON=EPSILON )
         METRICS[[iter]] = RETVALS
-        if ( RETVALS$END )
+        if ( RETVALS$END ) {
+            PRINT_SUMMARY_LINES( RETVALS$END, RETVALS$WHY, NEW_CENTROIDS, MU, SD, do_scaling )
             break
+        }
 
         OLD_CENTROIDS = NEW_CENTROIDS
     }
 
-    retvals = list( 'MAPPINGS'=MAPPING, 'CENTROIDS'=NEW_CENTROIDS, 'METRICS'=METRICS, 'JCOSTS'=JCOSTS )
+    retvals = list( 'MAPPINGS'=MAPPING, 'CENTROIDS'=NEW_CENTROIDS, 'METRICS'=METRICS, 'JCOSTS'=JCOSTS, 'MU'=MU, 'SD'=SD )
 
     if ( do_plot ) dev.off()
 
@@ -201,7 +271,7 @@ DO_DETAILED_INSIGHTS_KMEANS = function( Xdf, K,
 
 
 # ######################################################################################################
-DO_KMEANS_CLUSTER_ASSIGNMENT = function( X, ITEMS, CIDX, OLD_CENTROIDS, do_plot=FALSE, vargoal=0.999, debug=FALSE ) {
+DO_KMEANS_CLUSTER_ASSIGNMENT = function( X, ITEMS, CIDX, OLD_CENTROIDS, do_plot=FALSE, vargoal=VARGOAL, debug=FALSE ) {
     ITER_MAPPING = c()
 
     XXX = rbind(X, OLD_CENTROIDS )
@@ -316,7 +386,7 @@ COMPUTE_JCOST = function( OLD_CENTROIDS, X, MAPPING, AT_ITER=1, debug=FALSE ) {
 
 
 # ######################################################################################################
-ANALYZE_ENDING_CONDITION = function( iter, NEW_CENTROIDS, OLD_CENTROIDS, JCOSTS, EPSILON=1E-2, ITERMAX=300 ) {
+ANALYZE_ENDING_CONDITION = function( iter, NEW_CENTROIDS, OLD_CENTROIDS, JCOSTS, EPSILON=1E-3, ITERMAX=300 ) {
 
     ERROR = GET_ERROR_MEASUREMENT( NEW_CENTROIDS, OLD_CENTROIDS )
 
@@ -360,19 +430,28 @@ ANALYZE_ENDING_CONDITION = function( iter, NEW_CENTROIDS, OLD_CENTROIDS, JCOSTS,
         WHY=sprintf( "MAXITER, (DID NOT CONVERGE):   ITER= %5d DELTA=%8.4f %8.4f [EPSILON=%s]", iter, ERROR, FINAL_JCOST, EPSILON )
     }
 
+    retvals = list( END=END, WHY=WHY, ERROR=ERROR )
+
+    return ( retvals )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+PRINT_SUMMARY_LINES = function( END, WHY, NEW_CENTROIDS, MU, SD, do_scaling ) {
     if ( END ) {
         cat(HEADER)
         NEWLINE(3)
         cat(HEADER)
         print( WHY )
+        if ( do_scaling ) {
+            NEW_CENTROIDS = (NEW_CENTROIDS * SD) + MU 
+            print( NEW_CENTROIDS )
+        }
         cat(HEADER)
         cat(HEADER)
         cat(HEADER)
     }
-
-    retvals = list( END=END, WHY=WHY, ERROR=ERROR )
-
-    return ( retvals )
 }
 # ######################################################################################################
 
@@ -460,7 +539,8 @@ DO_DETAILED_DIAGNOSTICS = function( M0, psfile="clustering_methods.pdf" ) {
 
     CLUSTER_MEMBERSHIP = COLLECT_VECTOR( M, APPLY_F=DOMINANT_CLUSTER, get_type="cluster" )
     CLUSTER_DOMINANCE  = COLLECT_VECTOR( M, APPLY_F=DOMINANT_CLUSTER, get_type="dominance" )
-    CLUSTER_MEMBERSHIP_INCONSISTENCY = data.frame( 'CLUSTER'  =CLUSTER_MEMBERSHIP, 'INCONSISTENCY IN SAMPLE-TO-CLUSTER ASSIGNMENTS'=100-CLUSTER_DOMINANCE )
+    CLUSTER_MEMBERSHIP_INCONSISTENCY = data.frame( 'CLUSTER'  =CLUSTER_MEMBERSHIP, 
+                                                   'INCONSISTENCY IN SAMPLE-TO-CLUSTER ASSIGNMENTS'=100-CLUSTER_DOMINANCE )
 
     CLUSTER_SIZE_AT_EACH_ITER = apply( M[,WHICH_ITERS], 2, table )
     colnames(CLUSTER_SIZE_AT_EACH_ITER) = paste(WHICH_ITERS)
@@ -522,19 +602,39 @@ DO_DETAILED_DIAGNOSTICS = function( M0, psfile="clustering_methods.pdf" ) {
 # ######################################################################################################
 # ######################################################################################################
 # ######################################################################################################
+sink( "output_clustering_methods_diagnostics.out", split=TRUE )
+graphics.off()
 
 
-    X  = as.data.frame(GET_RANDOM_XY(1000,8))
-
-    K  = 3
 
     # ######################################################################################################
-    # BEST USE FOR: Once K is determined for X, the detailed diagnostics provide insights about the clusters 
+    M = 1000
+    N = 3
+    X  = as.data.frame(GET_RANDOM_XY(M,N))
+    x <- rbind(matrix(rnorm(M, mean = 0, sd = 0.3), ncol = 2),
+               matrix(rnorm(M, mean = 1, sd = 0.3), ncol = 2))
+         colnames(x) <- c("x", "y")
+
+    # X = x
+      K = N-0
     # ######################################################################################################
-    M0 = DO_DETAILED_INSIGHTS_KMEANS( X, K )
+
+        cat( HEADER )
+        cat( HEADER )
+        cat( HEADER )
     
-    DO_DETAILED_DIAGNOSTICS( M0, psfile="plot_clustering_methods_diagnostics.pdf" )
-
+        M0 = DO_DETAILED_INSIGHTS_KMEANS( X, K )
+        DO_DETAILED_DIAGNOSTICS( M0, psfile="plot_clustering_methods_diagnostics.pdf" )
+    
+        cat( HEADER )
+        cat( HEADER )
+        cat( HEADER )
+    
+        DO_KMEANS( X, K )
+    
+        cat( HEADER )
+        cat( HEADER )
+        cat( HEADER )
 
 sink()
 

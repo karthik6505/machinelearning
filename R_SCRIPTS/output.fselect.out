@@ -1,7 +1,7 @@
 
 [1] "               START: "
    user  system elapsed 
-  0.004   0.000   0.003 
+  0.004   0.002   0.006 
 
 
 
@@ -137,44 +137,44 @@
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
 'data.frame':	256 obs. of  12 variables:
- $ crim   : num  0.17 0.0686 0.2288 0.1396 0.1326 ...
- $ zn     : num  12.5 0 0 0 0 0 0 0 12.5 0 ...
- $ indus  : num  7.87 2.89 8.56 8.56 8.56 8.56 8.56 8.56 7.87 8.56 ...
- $ nox    : num  0.524 0.445 0.52 0.52 0.52 0.52 0.52 0.52 0.524 0.52 ...
- $ rm     : num  6 7.42 6.41 6.17 5.85 ...
- $ age    : num  85.9 62.5 85.4 90 96.7 91.9 85.2 97.1 94.3 91.2 ...
- $ dis    : num  6.59 3.5 2.71 2.42 2.11 ...
- $ rad    : num  5 2 5 5 5 5 5 5 5 5 ...
- $ tax    : num  311 276 384 384 384 384 384 384 311 384 ...
- $ ptratio: num  15.2 18 20.9 20.9 20.9 20.9 20.9 20.9 15.2 20.9 ...
- $ b      : num  386.7 396.9 70.8 392.7 394.1 ...
- $ lstat  : num  17.1 6.19 10.63 12.33 16.47 ...
+ $ crim   : num  0.00632 0.11432 0.1396 0.13262 0.13117 ...
+ $ zn     : num  18 0 0 0 0 0 0 0 0 0 ...
+ $ indus  : num  2.31 8.56 8.56 8.56 8.56 ...
+ $ nox    : num  0.538 0.52 0.52 0.52 0.52 0.52 0.547 0.547 0.547 0.547 ...
+ $ rm     : num  6.58 6.78 6.17 5.85 6.13 ...
+ $ age    : num  65.2 71.3 90 96.7 85.2 91.2 92.9 72.5 82.6 73.1 ...
+ $ dis    : num  4.09 2.86 2.42 2.11 2.12 ...
+ $ rad    : num  1 5 5 5 5 5 6 6 6 6 ...
+ $ tax    : num  296 384 384 384 384 384 432 432 432 432 ...
+ $ ptratio: num  15.3 20.9 20.9 20.9 20.9 20.9 17.8 17.8 17.8 17.8 ...
+ $ b      : num  397 396 393 394 388 ...
+ $ lstat  : num  4.98 7.67 12.33 16.47 14.09 ...
 [1] "APPLIED: correlation() reduction: [256 x 12]"
 medv ~ .
-<environment: 0x9782db0>
+<environment: 0xb0a09dc>
         attr_importance row.names(weights)
-lstat         0.8429794              lstat
-rm            0.6108023                 rm
-indus         0.5721691              indus
-nox           0.5614292                nox
-crim          0.5423495               crim
-tax           0.5289261                tax
-ptratio       0.5265071            ptratio
-age           0.5123490                age
-dis           0.4230235                dis
-zn            0.4191768                 zn
-rad           0.3235685                rad
-b             0.2570229                  b
+lstat         0.8631816              lstat
+indus         0.6175891              indus
+rm            0.6098419                 rm
+ptratio       0.5990722            ptratio
+age           0.5863580                age
+nox           0.5802750                nox
+crim          0.5763016               crim
+tax           0.5632967                tax
+dis           0.4842978                dis
+zn            0.4756479                 zn
+rad           0.3202853                rad
+b             0.1688213                  b
 [1] "WARNING: apparently, too many variables selected, rerunning to reduce from 10 to 5"
 
-[1] "subset <- cutoff.k(weights <- rank.correlation(~, d), 10): "                              
-[2] "subset <- cutoff.k(weights <- rank.correlation(medv, d), 10): "                           
-[3] "subset <- cutoff.k(weights <- rank.correlation(lstat + rm + indus + nox + crim, d), 10): "
+[1] "subset <- cutoff.k(weights <- rank.correlation(~, d), 10): "                                 
+[2] "subset <- cutoff.k(weights <- rank.correlation(medv, d), 10): "                              
+[3] "subset <- cutoff.k(weights <- rank.correlation(lstat + indus + rm + ptratio + age, d), 10): "
    user  system elapsed 
-  0.160   0.034   0.219 
+  0.225   0.057   0.513 
 
-medv ~ lstat + rm + indus + nox + crim
-<environment: 0x978c21c>
+medv ~ lstat + indus + rm + ptratio + age
+<environment: 0xc321738>
 ------------------------------------------------------------------------
 
 
@@ -200,44 +200,44 @@ medv ~ lstat + rm + indus + nox + crim
 ------------------------------------------------------------------------
 ------------------------------------------------------------------------
 'data.frame':	256 obs. of  12 variables:
- $ crim   : num  0.17 0.0686 0.1143 0.128 0.2249 ...
- $ zn     : num  12.5 0 0 0 12.5 0 0 0 0 0 ...
- $ indus  : num  7.87 2.89 8.56 8.56 7.87 ...
- $ nox    : num  0.524 0.445 0.52 0.52 0.524 0.52 0.547 0.547 0.547 0.547 ...
- $ rm     : num  6 7.42 6.78 6.47 6.38 ...
- $ age    : num  85.9 62.5 71.3 97.1 94.3 54.4 81.6 92.9 84.2 82.6 ...
- $ dis    : num  6.59 3.5 2.86 2.43 6.35 ...
- $ rad    : num  5 2 5 5 5 5 6 6 6 6 ...
- $ tax    : num  311 276 384 384 311 384 432 432 432 432 ...
- $ ptratio: num  15.2 18 20.9 20.9 15.2 20.9 17.8 17.8 17.8 17.8 ...
- $ b      : num  387 397 396 395 393 ...
- $ lstat  : num  17.1 6.19 7.67 12.27 20.45 ...
+ $ crim   : num  0.00632 0.17004 0.14866 0.11432 0.22876 ...
+ $ zn     : num  18 12.5 0 0 0 0 0 0 0 0 ...
+ $ indus  : num  2.31 7.87 8.56 8.56 8.56 8.56 8.56 8.56 8.56 8.56 ...
+ $ nox    : num  0.538 0.524 0.52 0.52 0.52 0.52 0.52 0.52 0.52 0.52 ...
+ $ rm     : num  6.58 6 6.73 6.78 6.41 ...
+ $ age    : num  65.2 85.9 79.9 71.3 85.4 87.4 90 91.9 85.2 97.1 ...
+ $ dis    : num  4.09 6.59 2.78 2.86 2.71 ...
+ $ rad    : num  1 5 5 5 5 5 5 5 5 5 ...
+ $ tax    : num  296 311 384 384 384 384 384 384 384 384 ...
+ $ ptratio: num  15.3 15.2 20.9 20.9 20.9 20.9 20.9 20.9 20.9 20.9 ...
+ $ b      : num  396.9 386.7 394.8 395.6 70.8 ...
+ $ lstat  : num  4.98 17.1 9.42 7.67 10.63 ...
 [1] "APPLIED: correlation() reduction: [256 x 12]"
 medv ~ .
-<environment: 0x9a2a3b4>
+<environment: 0xc40a2a0>
         attr_importance row.names(weights)
-rm            0.7294022                 rm
-lstat         0.7182496              lstat
-ptratio       0.4816556            ptratio
-tax           0.3880416                tax
-indus         0.3864418              indus
-nox           0.3695325                nox
-crim          0.3382945               crim
-rad           0.3362122                rad
-age           0.3239745                age
-zn            0.3212651                 zn
-b             0.3195036                  b
-dis           0.1671677                dis
+lstat         0.7488395              lstat
+rm            0.7000065                 rm
+ptratio       0.5663568            ptratio
+tax           0.5262601                tax
+indus         0.5187661              indus
+rad           0.4465180                rad
+nox           0.4439080                nox
+age           0.4225803                age
+zn            0.4183356                 zn
+crim          0.4146634               crim
+b             0.3342608                  b
+dis           0.3075762                dis
 [1] "WARNING: apparently, too many variables selected, rerunning to reduce from 10 to 5"
 
 [1] "subset <- cutoff.k(weights <- linear.correlation(~, d), 10): "                                 
 [2] "subset <- cutoff.k(weights <- linear.correlation(medv, d), 10): "                              
-[3] "subset <- cutoff.k(weights <- linear.correlation(rm + lstat + ptratio + tax + indus, d), 10): "
+[3] "subset <- cutoff.k(weights <- linear.correlation(lstat + rm + ptratio + tax + indus, d), 10): "
    user  system elapsed 
-  0.194   0.054   0.275 
+  0.280   0.092   0.607 
 
-medv ~ rm + lstat + ptratio + tax + indus
-<environment: 0xa52c310>
+medv ~ lstat + rm + ptratio + tax + indus
+<environment: 0xb3474b0>
 ------------------------------------------------------------------------
 
 
@@ -279,7 +279,7 @@ medv ~ rm + lstat + ptratio + tax + indus
 [1] "APPLIED: missingcase() reduction: [232 x 17]"
 [1] "APPLIED: subsampling() reduction: [232 x 17]"
 Class ~ .
-<environment: 0x9f8b3fc>
+<environment: 0xb07c304>
     attr_importance row.names(weights)
 V4       0.94042449                 V4
 V5       0.75434730                 V5
@@ -303,10 +303,10 @@ V2       0.02062241                 V2
 [2] "subset <- cutoff.k(weights <- chi.squared(Class, d), 10): "                        
 [3] "subset <- cutoff.k(weights <- chi.squared(V4 + V5 + V12 + V3 + V8 + V14, d), 10): "
    user  system elapsed 
-  0.512   0.101   1.138 
+  0.795   0.171   2.301 
 
 Class ~ V4 + V5 + V12 + V3 + V8 + V14
-<environment: 0xa3fae84>
+<environment: 0xb330390>
 ------------------------------------------------------------------------
 
 
@@ -328,7 +328,7 @@ Class ~ V4 + V5 + V12 + V3 + V8 + V14
 [1] "APPLIED: missingcase() reduction: [232 x 17]"
 [1] "APPLIED: subsampling() reduction: [232 x 17]"
 Class ~ .
-<environment: 0xa4472c0>
+<environment: 0xb0e2aec>
     attr_importance row.names(weights)
 V4       0.93263551                 V4
 V5       0.75074680                 V5
@@ -352,10 +352,10 @@ V2       0.06150071                 V2
 [2] "subset <- cutoff.k(weights <- oneR(Class, d), 10): "                        
 [3] "subset <- cutoff.k(weights <- oneR(V4 + V5 + V12 + V3 + V14 + V8, d), 10): "
    user  system elapsed 
-  0.714   0.114   1.352 
+  1.120   0.188   2.721 
 
 Class ~ V4 + V5 + V12 + V3 + V14 + V8
-<environment: 0xa48db34>
+<environment: 0xa687bb0>
 ------------------------------------------------------------------------
 
 
@@ -407,7 +407,7 @@ Class ~ V4 + V5 + V12 + V3 + V14 + V8
  $ Petal.Width : num  0.2 0.1 1.3 2.5 1.9 2.1 1.8 2.2 2.1 1.7 ...
 [1] "APPLIED: correlation() reduction: [150 x 4]"
 Species ~ .
-<environment: 0xa4fd9fc>
+<environment: 0xa4e6588>
              attr_importance row.names(weights)
 Petal.Width        0.8713692        Petal.Width
 Petal.Length       0.8584937       Petal.Length
@@ -418,10 +418,10 @@ Sepal.Width        0.2472972        Sepal.Width
 [2] "subset <- cutoff.k(weights <- gain.ratio(Species, d), 3): "                                  
 [3] "subset <- cutoff.k(weights <- gain.ratio(Petal.Width + Petal.Length + Sepal.Length, d), 3): "
    user  system elapsed 
-  0.817   0.127   1.478 
+  1.280   0.212   2.975 
 
 Species ~ Petal.Width + Petal.Length + Sepal.Length
-<environment: 0x977d1cc>
+<environment: 0xb31d338>
 ------------------------------------------------------------------------
 
 
@@ -453,7 +453,7 @@ Species ~ Petal.Width + Petal.Length + Sepal.Length
  $ Petal.Width : num  0.2 0.1 1.3 2.5 1.9 2.1 1.8 2.2 2.1 1.7 ...
 [1] "APPLIED: correlation() reduction: [150 x 4]"
 Species ~ .
-<environment: 0x9dbd04c>
+<environment: 0xb0da254>
              attr_importance row.names(weights)
 Petal.Width        1.3784027        Petal.Width
 Petal.Length       1.3565450       Petal.Length
@@ -464,10 +464,10 @@ Sepal.Width        0.3855963        Sepal.Width
 [2] "subset <- cutoff.k(weights <- information.gain(Species, d), 3): "                                  
 [3] "subset <- cutoff.k(weights <- information.gain(Petal.Width + Petal.Length + Sepal.Length, d), 3): "
    user  system elapsed 
-  0.881   0.140   1.554 
+  1.387   0.229   3.100 
 
 Species ~ Petal.Width + Petal.Length + Sepal.Length
-<environment: 0x991ccbc>
+<environment: 0xc677c68>
 ------------------------------------------------------------------------
 
 
@@ -499,7 +499,7 @@ Species ~ Petal.Width + Petal.Length + Sepal.Length
  $ Petal.Width : num  0.2 0.1 1.3 2.5 1.9 2.1 1.8 2.2 2.1 1.7 ...
 [1] "APPLIED: correlation() reduction: [150 x 4]"
 Species ~ .
-<environment: 0x94ca260>
+<environment: 0xba38194>
              attr_importance row.names(weights)
 Petal.Width        0.8705214        Petal.Width
 Petal.Length       0.8571872       Petal.Length
@@ -510,10 +510,10 @@ Sepal.Width        0.2452743        Sepal.Width
 [2] "subset <- cutoff.k(weights <- symmetrical.uncertainty(Species, d), 3): "                                  
 [3] "subset <- cutoff.k(weights <- symmetrical.uncertainty(Petal.Width + Petal.Length + Sepal.Length, d), 3): "
    user  system elapsed 
-  0.951   0.148   1.629 
+  1.498   0.246   3.227 
 
 Species ~ Petal.Width + Petal.Length + Sepal.Length
-<environment: 0xa4e7d6c>
+<environment: 0xb17f290>
 ------------------------------------------------------------------------
 
 
