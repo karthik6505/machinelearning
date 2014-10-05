@@ -516,6 +516,9 @@ GET_RANDOM_XY = function( M=1000, N=5 ) {
         print( sprintf( "V[%s] = rnorm( %s %s %s )", i, M, m, s ))
     }
 
+    rownames(XX) = 1:M
+    colnames(XX) = paste("X",1:N,sep="")
+
     return ( XX )
 }
 # ######################################################################################################

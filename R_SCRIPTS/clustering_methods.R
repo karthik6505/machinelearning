@@ -271,6 +271,35 @@ DO_DETAILED_INSIGHTS_KMEANS = function( Xdf, K,
 
 
 # ######################################################################################################
+# Determine number of clusters  # http://www.statmethods.net/advstats/cluster.html 
+# ######################################################################################################
+FIND_AN_APPROXIMATE_KMEANS_BEND = function( myX, KMAX=20, BUILDUP_DELAY=5, P=2 ) {
+    KMAX=min(max(5,KMAX), 0.9 * nrow(myX))
+
+    wss <- (nrow(myX)-1) * sum(apply(myX,2,var))
+    for (i in 2:KMAX) 
+        wss[i] <- sum(kmeans(myX, centers=i, nstart=2, iter.max=10)$withinss)
+    names(wss) = 1:KMAX
+    
+    WSS   = cumsum(wss)[length(wss)]
+    D     = 5
+    SIGNIFICANT_CONTRIBUTION = P * WSS/KMAX
+    WHICH_ONE = as.numeric(which( wss[BUILDUP_DELAY:length(wss)] <= SIGNIFICANT_CONTRIBUTION )) + BUILDUP_DELAY
+    print( WHICH_ONE )
+
+    op = par(mfrow=c(2,1))
+        plot(1:KMAX, wss, type="b", xlab="Number of Clusters", ylab="Within groups sum of squares")
+        points( WHICH_ONE, wss[WHICH_ONE], pch=8, cex=2, col="green" )
+    par(op)
+
+    retvals = list( 'wss'=wss, 'pivot'=pivot, 'bend' = WHICH_ONE )
+    print( retvals )
+    return ( wss )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
 DO_KMEANS_CLUSTER_ASSIGNMENT = function( X, ITEMS, CIDX, OLD_CENTROIDS, do_plot=FALSE, vargoal=VARGOAL, debug=FALSE ) {
     ITER_MAPPING = c()
 
@@ -593,18 +622,16 @@ DO_DETAILED_DIAGNOSTICS = function( M0, psfile="clustering_methods.pdf" ) {
 
 
 
-
-
-
-
 # ######################################################################################################
 # ######################################################################################################
 # ######################################################################################################
 # ######################################################################################################
 # ######################################################################################################
-sink( "output_clustering_methods_diagnostics.out", split=TRUE )
-graphics.off()
+CLUSTER_TESTS = TRUE
 
+if ( CLUSTER_TESTS ) {
+    sink( "output_clustering_methods_diagnostics.out", split=TRUE )
+    graphics.off()
 
 
     # ######################################################################################################
@@ -636,7 +663,8 @@ graphics.off()
         cat( HEADER )
         cat( HEADER )
 
-sink()
+    sink()
+}
 
 # ######################################################################################################
 # ######################################################################################################
