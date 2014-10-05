@@ -16,8 +16,26 @@ This README would normally document whatever steps are necessary to get your app
     for various general areas. Of course, these have not yet been optimized
     and thus are limited by your environment R's runtime limitations.
 
+#### 24 -rw-rw-r-- 1 nrm nrm 13787 Oct  4 22:54 dbscan.R    ####
+    Implements a version of dbscan which instead uses transitive closure which 
+    allows to do heuristics about the search space and adaptations to it.
+    For example, it allows to discover the value of EPSILON that fits
+    the data. Experimental as all in here as written in past 24 hrs.
 
+#### 36 -rw-rw-r-- 1 nrm nrm 26314 Oct  4 19:58 clustering_methods.R ####
+    Implements a diagnostics version of kmeans which provides feedback about
+    the convergence of kmeans within iterations given a value of K.
+    Experimental as all in here as written in past 24 hrs.
 
+#### 16 -rw-rw-r-- 1 nrm nrm  4610 Oct  3 02:56 recommender_igraphs.R ####
+    Implements plotting of adjacency matrices produced by the recommender system 
+    using igraph. Currently based on adjacency non-sparse matrix representation 
+    which does NOT scale well with dataset size for this application as 
+
+#### 24 -rw-rw-r-- 1 nrm nrm 13757 Oct  3 02:33 recommender_diagnostics.R ####
+    Implements basic diagnostics plots for the recommender system.
+
+#### 48K -rw-rw-r-- 1 nrm nrm  38K Sep 25 20:20 recommender_systems.R ####
 #### 48K -rw-rw-r-- 1 nrm nrm  38K Sep 25 20:20 recommender_systems.R ####
     Implements an iterative convergence collaborative filtering and 
     recommendation system, tailored for the movielens dataset. 

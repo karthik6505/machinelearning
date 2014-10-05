@@ -162,8 +162,8 @@ TRANSITIVE_CLOSURE = function ( topitem, cid, debug=FALSE ) {
 
 
 # ######################################################################################################
-DO_DBSCAN_PLOT = function( ) {
-    COLORS  = 1:length(CLUSTERS)
+DO_DBSCAN_PLOT = function( CLUSTERS ) {
+    COLORS  = 1:length(CLUSTERS) + 24
     SYMBOLS = 1:length(CLUSTERS)
 
     if ( ncol(X) == 2 ) {
@@ -225,7 +225,6 @@ GET_INITIAL_EPSILON_ESTIMATE_FOR = function( X, D, NMIN=500, MINCON=100, debug=F
 # #################################################################################################
 GET_CLUSTERED_X = function( MM=500 ) {
     # a 2-dimensional example
-    MM = 500
     x <- rbind(matrix(rnorm(MM, mean = 0, sd = 0.5), ncol = 2),
                    matrix(rnorm(MM, mean = 2, sd = 0.3), ncol = 2),
                    matrix(rnorm(MM, mean = 4, sd = 0.4), ncol = 2),
@@ -240,6 +239,101 @@ GET_CLUSTERED_X = function( MM=500 ) {
 # #################################################################################################
 
 
+# ######################################################################################################
+UPDATE_EPSILON = function( CHANGE, debug=FALSE ) { 
+    EPSILON <<- EPSILON + CHANGE 
+
+    if ( debug ) 
+        print( paste( "EPSILON INCREASED", EPSILON ) )
+
+    return ( EPSILON )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+# TODO
+# compute cluster means
+# compute wss
+# compute error
+# if error going down
+# otherwise, bump size
+# else end
+# get new centroids from kmeans code
+# get the error
+# ######################################################################################################
+DO_DBSCAN = function( X, D, MIN_SIZE, ORDERING_IN_USE ) {
+    CLUSTERS = c()
+
+    cid = 1
+    for ( topitem in ORDERING_IN_USE ) {
+
+        if ( any(VISITED == 0) ) {
+            if ( FALSE )
+                TRANSITIVE_CLOSURE_FROM( topitem, EPSILON, cid )
+            else
+                TRANSITIVE_CLOSURE( topitem, cid )
+
+            WHICH = which( VISITED == cid )
+
+            if ( DEBUG ) 
+                print( paste( "length(which(table(VISITED)<MIN_SIZE))", 
+                               length(which(table(VISITED)<MIN_SIZE))))
+
+            NOISE_CLUSTERS = names( which( table(VISITED)<=MIN_SIZE) )
+            for ( i in NOISE_CLUSTERS ) {
+                VISITED[ VISITED==as.integer(i) ] <<- 0
+            }
+
+            # VALID_CLUSTERS = names( which( table(VISITED)>MIN_SIZE) )
+            if ( DEBUG ) 
+                print( table(VISITED) )
+
+            if ( length(WHICH) < MIN_SIZE ) { 
+                VISITED[WHICH] <<- 0
+                EPSILON = UPDATE_EPSILON( STEP/50 )
+            } else {
+                CLUSTERS = append( CLUSTERS, cid )
+                cid = cid + 1
+                if ( DEBUG ) {
+                    cat( HEADER )
+                    print ( table ( VISITED ) )
+                    cat( HEADER )
+                    NEWLINE(3)
+                }
+            }
+
+            if ( length( VISITED==0 ) > 50 ) {
+                EPSILON = UPDATE_EPSILON( STEP/10 )
+            }
+
+        } else
+            break
+    }
+    # ############################################################################################
+    
+    # ############################################################################################
+    cat( HEADER )
+    print( paste( "FINAL EPSILON=", EPSILON, "NOISE THRESHOLD=", MIN_SIZE ))
+    print( table ( VISITED ) )
+    cat( HEADER )
+    cat( HEADER )
+    NEWLINE(1)
+    # ############################################################################################
+    
+    DO_DBSCAN_PLOT( CLUSTERS )
+
+    NOISE = length( VISITED==0 )
+    if ( NOISE > 30 ) {
+        EPSILON = UPDATE_EPSILON( STEP/10 )
+    }
+
+    RETVALS = list( 'EPSILON'=EPSILON, 'MAPPINGS'=VISITED, 'CLUSTERS'=CLUSTERS, 'NOISE'=NOISE )
+
+    return ( RETVALS )
+
+}
+# ######################################################################################################
 
 
 
@@ -257,19 +351,13 @@ GET_CLUSTERED_X = function( MM=500 ) {
 
 
 
-
-# #################################################################################################
-X      = GET_CLUSTERED_X( 500 )
-M      = nrow(X)
-N      = ncol(X)
-STEP   = 1E-2
-DEBUG  = FALSE
-# ############################################################################################
 
 # ############################################################################################
 DO_TEST= TRUE
 # ############################################################################################
 
+
+# ######################################################################################################
 if ( DO_TEST ) {
     options( width=132 )
     sink( 'output.dbscan.out', split=T )
@@ -278,98 +366,32 @@ if ( DO_TEST ) {
     pdf( 'plot_dbscan_cluster_assignments.pdf', 12, 8 )
     par( mfrow=c(2,2) )
     
+    # ############################################################################################
+    X      = GET_CLUSTERED_X( 1000 )
+    M      = nrow(X)
+    N      = ncol(X)
+
     D = as.matrix( dist( X, upper=TRUE, diag=TRUE ) )
+
+    STEP   = 1E-2
+    DEBUG  = FALSE
 
     ORIGINAL_EPSILON = GET_INITIAL_EPSILON_ESTIMATE_FOR( X, D )
     ORDERING_IN_USE  = sample(1:M,M)
     NOISE_THRESHOLDS = c(0,1,3,5,10,20,30,40)
     
+    # ############################################################################################
     for ( MIN_SIZE in NOISE_THRESHOLDS ) {
-    
-        EPSILON = ORIGINAL_EPSILON
-    
-        VISITED = VECTOR(M); 
-            rownames(VISITED) = rownames(X)
-        
-        CLUSTERS = c()
-        
-        cid = 1
-        for ( topitem in ORDERING_IN_USE ) {
-    
-            if ( any(VISITED == 0) ) {
-                if ( FALSE )
-                    TRANSITIVE_CLOSURE_FROM( topitem, EPSILON, cid )
-                else
-                    TRANSITIVE_CLOSURE( topitem, cid )
-    
-                WHICH = which( VISITED == cid )
-    
-                if ( DEBUG ) 
-                    print( paste( "length(which(table(VISITED)<MIN_SIZE))", 
-                                   length(which(table(VISITED)<MIN_SIZE))))
 
-                NOISE_CLUSTERS = names( which( table(VISITED)<=MIN_SIZE) )
-                for ( i in NOISE_CLUSTERS ) {
-                    VISITED[ VISITED==as.integer(i) ] = 0
-                }
-    
-                # VALID_CLUSTERS = names( which( table(VISITED)>MIN_SIZE) )
-                if ( DEBUG ) 
-                    print( table(VISITED) )
-    
-                if ( length(WHICH) < MIN_SIZE ) { 
-                    VISITED[WHICH] = 0
-                    EPSILON = EPSILON + STEP/50
-                } else {
-                    CLUSTERS = append( CLUSTERS, cid )
-                    cid = cid + 1
-                    if ( DEBUG ) {
-                        cat( HEADER )
-                        print ( table ( VISITED ) )
-                        cat( HEADER )
-                        NEWLINE(3)
-                    }
-                }
-    
-                if ( length( VISITED==0 ) > 50 ) {
-                    EPSILON = EPSILON + STEP/10
-                    if ( DEBUG ) 
-                        print( paste( "EPSILON INCREASED", EPSILON ) )
-                }
-    
-            } else
-                break
-        }
-        # ############################################################################################
-        
-        # ############################################################################################
-        cat( HEADER )
-        print( paste( "FINAL EPSILON=", EPSILON, "NOISE THRESHOLD=", MIN_SIZE ))
-        print( table ( VISITED ) )
-        cat( HEADER )
-        cat( HEADER )
-        NEWLINE(1)
-        # ############################################################################################
-        
-        # ############################################################################################
-        # compute cluster means
-        # compute wss
-        # compute error
-        # if error going down
-        # otherwise, bump size
-        # else end
-        # get new centroids from kmeans code
-        # get the error
-        # ############################################################################################
-        
-        DO_DBSCAN_PLOT( )
-    
-        if ( length( VISITED==0 ) > 30 ) {
-            print( paste( "EPSILON INCREASED", EPSILON ) )
-            EPSILON = EPSILON + STEP/10
-        }
-    
+        EPSILON = ORIGINAL_EPSILON
+
+        VISITED = VECTOR(M); rownames(VISITED) = rownames(X)
+
+        DO_DBSCAN( X, D, MIN_SIZE, ORDERING_IN_USE )
+
     }
+    # ############################################################################################
+
     dev.off()
     sink()
 }
