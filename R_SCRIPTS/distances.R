@@ -39,11 +39,7 @@ source( 'datasets.R' )
 
 
 # #####################################################################################
-DO_DISTANCE_VALIDATION = TRUE
-# #####################################################################################
-    V = CHECK_COMMAND_ARGS( commandArgs(), "DO_DISTANCE_VALIDATION" )
-    if ( V$'VALID'==TRUE & V$'FOUND'==TRUE ) 
-        DO_DISTANCE_VALIDATION = V$'ARGVAL'
+VERIFY_OPTARG ( OPTARG_NAME="DO_DISTANCE_VALIDATION", OPTARG_VALUE=TRUE )
 # #####################################################################################
 
 

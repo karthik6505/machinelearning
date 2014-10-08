@@ -635,3 +635,14 @@ GET_PCA_PLOT_VALUES = function( Ureduce, MAT ) {
 # ######################################################################################################
 
 
+# ######################################################################################################
+VERIFY_OPTARG = function( OPTARG_NAME="", OPTARG_VALUE=NA ) { 
+    V = CHECK_COMMAND_ARGS( commandArgs(), OPTARG_NAME )
+    if ( V$'VALID'==TRUE & V$'FOUND'==TRUE ) 
+        P = eval( parse( text=sprintf("%s <<- V$'ARGVAL'", OPTARG_NAME )))
+    else
+        P = eval( parse( text=sprintf("%s <<- %s", OPTARG_NAME, OPTARG_VALUE )))
+
+}
+# ######################################################################################################
+

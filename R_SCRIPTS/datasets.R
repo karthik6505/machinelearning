@@ -524,3 +524,26 @@ GET_RANDOM_XY = function( M=1000, N=5 ) {
 # ######################################################################################################
 
 
+# ######################################################################################################
+GET_CLUSTERED_X = function( MM=100, NN=5, N=2, SD_X=c(), MU_X=c() ) {
+    if ( length(SD_X) == 0 ) SD_X <<- c(SD+.1, SD+0.1, SD+0.1, SD+0.1, SD+0.1 )
+    if ( length(MU_X) == 0 ) MU_X <<- c(    0,      1,      2,      3,      4 )
+    cat ( HEADER )
+    print( sprintf( "X comprises: %s samples sets from %s normal random sources across a %s dimensional space", MM, NN, N ) ) 
+    print( sprintf( "MU[%s]=%.2f", 1:NN, MU_X ) )
+    print( sprintf( "SD[%s]=%.2f", 1:NN, SD_X ) )
+    cat ( HEADER )
+
+    # a 2-dimensional example
+    x <- rbind(matrix(rnorm(MM, mean = MU_X[1], sd = SD_X[1]), ncol = 2),
+               matrix(rnorm(MM, mean = MU_X[2], sd = SD_X[2]), ncol = 2),
+               matrix(rnorm(MM, mean = MU_X[3], sd = SD_X[3]), ncol = 2),
+               matrix(rnorm(MM, mean = MU_X[4], sd = SD_X[4]), ncol = 2),
+               matrix(rnorm(MM, mean = MU_X[5], sd = SD_X[5]), ncol = 2))
+    colnames(x) <- c("x", "y")
+    rownames(x) <- 1:nrow(x)
+    X = x
+    X = scale( X )
+    return ( X )
+}
+# #################################################################################################

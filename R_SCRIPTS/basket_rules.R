@@ -41,11 +41,7 @@ source( 'utilities.R' )
 
 
 # #####################################################################################
-TEST_ENABLED = TRUE
-# #####################################################################################
-    V = CHECK_COMMAND_ARGS( commandArgs(), "TEST_ENABLED" )
-    if ( V$'VALID'==TRUE & V$'FOUND'==TRUE ) 
-        TEST_ENABLED = V$'ARGVAL'
+VERIFY_OPTARG ( OPTARG_NAME="TEST_ENABLED", OPTARG_VALUE=TRUE )
 # #####################################################################################
 
 

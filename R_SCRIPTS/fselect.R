@@ -99,16 +99,10 @@ source( 'utilities.R' )
 
 
 # #####################################################################################
-DOUBLECHECK = FALSE
-APPLY_EXTRA_METHODS = FALSE
+VERIFY_OPTARG ( OPTARG_NAME="TEST_ENABLED", OPTARG_VALUE=TRUE )
+VERIFY_OPTARG ( OPTARG_NAME="DOUBLECHECK",  OPTARG_VALUE=FALSE )
+VERIFY_OPTARG ( OPTARG_NAME="APPLY_EXTRA_METHODS",  OPTARG_VALUE=FALSE )
 # #####################################################################################
-TEST_ENABLED = TRUE
-# #####################################################################################
-    V = CHECK_COMMAND_ARGS( commandArgs(), "TEST_ENABLED" )
-    if ( V$'VALID'==TRUE & V$'FOUND'==TRUE ) 
-        TEST_ENABLED = V$'ARGVAL'
-# #####################################################################################
-
 
 
 # #####################################################################################

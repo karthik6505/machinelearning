@@ -34,17 +34,15 @@ message("")
 
 # ######################################################################################################
 OLD_CA = commandArgs()
-commandArgs <- function() list(TEST_ENABLED=FALSE, DO_DISTANCE_VALIDATION=FALSE, RUN_VALIDATE_SGD=FALSE )
-# ######################################################################################################
-
-
+commandArgs <- function() list(TEST_ENABLED=FALSE, DO_DBTEST=TRUE, DO_DISTANCE_VALIDATION=FALSE, RUN_VALIDATE_SGD=FALSE )
 # ######################################################################################################
 source( 'utilities.R' )
 source( 'datasets.R' )
 source( 'fselect.R' )
+source( 'contour.R' )
 # ######################################################################################################
-
-
+VERIFY_OPTARG ( OPTARG_NAME="DO_DBTEST", OPTARG_VALUE=TRUE )
+# ######################################################################################################
 
 
 # #################################################################################################
@@ -145,7 +143,6 @@ UPDATE_VISITED = function( WHICH, cid ) {
 # ############################################################################################
 #### 0 1
 TRANSITIVE_CLOSURE = function ( topitem, cid, MIN_LEADSIZE=5, debug=FALSE ) {
-    MIN_LEADSIZE = MIN_SIZE
     WHICH  = GET_WHICH ( topitem )
     UPDATE = GET_UPDATE ( WHICH )
     UPDATE = VALIDATE_UPDATE( UPDATE, cid )
@@ -214,7 +211,7 @@ GET_INITIAL_EPSILON_ESTIMATE_FOR = function( X, D, epsilon=NA, NMIN=500, q=1.0, 
     for ( EPSILON in  seq(STEP,1,STEP) ) {
         OUT_DEGREES = rowSums(ifelse( DD<EPSILON, 1, 0 ))
         OUTDEGREE_STAT = quantile(OUT_DEGREES, c(q))[1]
-        print( paste ( EPSILON, OUTDEGREE_STAT, MINCON ) )
+        if( debug) print( paste ( EPSILON, OUTDEGREE_STAT, MINCON ) )
         if ( OUTDEGREE_STAT > MINCON ) break
     }
     EPSILON = ifelse( is.na(EPSILON), 0.3, EPSILON )
@@ -231,29 +228,6 @@ GET_INITIAL_EPSILON_ESTIMATE_FOR = function( X, D, epsilon=NA, NMIN=500, q=1.0, 
     return ( EPSILON )
 }
 # ######################################################################################################
-
-
-# #################################################################################################
-GET_CLUSTERED_X = function( MM=100, NN=5, N=2, SD_X, MU_X ) {
-    cat ( HEADER )
-    print( sprintf( "X comprises: %s samples sets from %s normal random sources across a %s dimensional space", MM, NN, N ) ) 
-    print( sprintf( "MU[%s]=%.2f", 1:NN, MU_X ) )
-    print( sprintf( "SD[%s]=%.2f", 1:NN, SD_X ) )
-    cat ( HEADER )
-
-    # a 2-dimensional example
-    x <- rbind(matrix(rnorm(MM, mean = MU_X[1], sd = SD_X[1]), ncol = 2),
-               matrix(rnorm(MM, mean = MU_X[2], sd = SD_X[2]), ncol = 2),
-               matrix(rnorm(MM, mean = MU_X[3], sd = SD_X[3]), ncol = 2),
-               matrix(rnorm(MM, mean = MU_X[4], sd = SD_X[4]), ncol = 2),
-               matrix(rnorm(MM, mean = MU_X[5], sd = SD_X[5]), ncol = 2))
-    colnames(x) <- c("x", "y")
-    rownames(x) <- 1:nrow(x)
-    X = x
-    X = scale( X )
-    return ( X )
-}
-# #################################################################################################
 
 
 # ######################################################################################################
@@ -273,10 +247,10 @@ DO_DBSCAN = function( X, D, MIN_SIZE, ORDERING_IN_USE, debug=FALSE ) {
     CLUSTERS = c()
     CID = 1
     for ( TOPITEM in ORDERING_IN_USE ) {
-      if ( any(VISITED == 0)) {
-         # if ( any(VISITED[ which(DISTANCE_MATRIX_X[TOPITEM,] < (100*EPSILON)) ] == 0) ) {
+      if ( any(VISITED == 0))
+         if ( any(VISITED[ which(DISTANCE_MATRIX_X[TOPITEM,] < (10*EPSILON)) ] == 0) ) {
 
-            TRANSITIVE_CLOSURE( TOPITEM, CID )
+            TRANSITIVE_CLOSURE( TOPITEM, CID, MIN_LEADSIZE = MIN_SIZE )
 
             WHICH = which( VISITED == CID )
             if ( debug ) print( paste( "length(which(table(VISITED)<MIN_SIZE))", length(which(table(VISITED)<MIN_SIZE))))
@@ -320,9 +294,7 @@ DO_DBSCAN = function( X, D, MIN_SIZE, ORDERING_IN_USE, debug=FALSE ) {
             break
     }
 
-    DO_DBSCAN_PLOT( CLUSTERS )
-    PRINT_SUMMARY( CLUSTERS )
-    RETVALS = list( 'EPSILON'=EPSILON, 'MAPPINGS'=VISITED, 'CLUSTERS'=CLUSTERS, 'NOISE'=NOISE )
+    RETVALS = list( 'EPSILON'=EPSILON, 'MAPPINGS'=VISITED, 'CLUSTERS'=CLUSTERS, 'NOISE'=NOISE, 'SUMMARY'=SUMMARY )
 
     return ( RETVALS )
 
@@ -351,6 +323,16 @@ PRINT_SUMMARY =function( CLUSTERS, debug=TRUE ) {
     print( C )
     cat( HEADER )
     NEWLINE(1)
+
+    retvals = list ( "FINAL_EPSILON"=round(EPSILON,3),
+                     "NOISE_THRESHOLD"=MIN_SIZE, 
+                     "NOISE"=NOISE, 
+                     "NC"=length(C), 
+                     'SUM_WSS'=round(TOTAL_WSS_SUM,2), 
+                     'AVG_WSS'=round(TOTAL_MSE_SUM,2),
+                     'AVG_ICD'=round(AVG_BETWEEN_CLUSTER_DIST,2),
+                     'METRIC'=METRIC )
+    return(  retvals )
 }
 # ######################################################################################################
 
@@ -413,44 +395,72 @@ GET_DISTANCE_BETWEEN_CENTROIDS = function( CENTROIDS ) {
 
 
 # ############################################################################################
-DO_TEST= TRUE
 # ############################################################################################
 
 
 # ######################################################################################################
-if ( DO_TEST ) {
+if ( DO_DBTEST ) {
     # ############################################################################################
     options( width=132 )
     sink( 'output.dbscan.out', split=T )
     graphics.off()
     pdf( 'plot_dbscan_cluster_assignments.pdf', 12, 8 )
-    par( mfrow=c(2,2) )
     # ############################################################################################
     
     # ############################################################################################
+    NOISE_THRESHOLDS        = c(4,8,12,16,20)
+    NUM_SAMPLES_PER_CLUSTER = 500
+    NUM_CLUSTERS            = 5
+    DIMENSIONALITY          = 2
     SD = 0.2
     SD_X <<- c(SD+.1, SD+0.1, SD+0.1, SD+0.1, SD+0.1 )
     MU_X <<- c(    0,      1,      2,      3,      4 )
-    X      = GET_CLUSTERED_X( MM=400, NN=5, N=2, SD_X, MU_X )
+    X      = GET_CLUSTERED_X( MM=NUM_SAMPLES_PER_CLUSTER, 
+                              NN=NUM_CLUSTERS, 
+                              N=DIMENSIONALITY, 
+                              SD_X, 
+                              MU_X )
     M      = nrow(X)
     N      = ncol(X)
-    STEP   = 1E-2
+
+    STEP   = 1E-3
+
     # ############################################################################################
 
     # ############################################################################################
     DISTANCE_MATRIX_X = as.matrix( dist( X, upper=TRUE, diag=TRUE ) )
+
     ORIGINAL_EPSILON  = GET_INITIAL_EPSILON_ESTIMATE_FOR( X, DISTANCE_MATRIX_X, epsilon=0.15, q=0.99 )
+
     ORDERING_IN_USE   = as.numeric(names( sort( rowSums(DISTANCE_MATRIX_X<ORIGINAL_EPSILON), decreasing=TRUE ) ))          
     # ############################################################################################
 
     # ############################################################################################
-    NOISE_THRESHOLDS = c(5,10,15,20)
-    for ( MIN_SIZE in NOISE_THRESHOLDS ) {
-        EPSILON = ORIGINAL_EPSILON
-        VISITED <<- VECTOR(M); rownames(VISITED) = rownames(X)
-        DBSCAN_RETVALS = DO_DBSCAN( X, D, MIN_SIZE, ORDERING_IN_USE )
-    }
-    # ############################################################################################
+    par( mfrow=c(3,2) )
+        i = 1
+        SUMMARY = list()
+        for ( MIN_SIZE in NOISE_THRESHOLDS ) {
+            EPSILON = ORIGINAL_EPSILON
+            VISITED <<- VECTOR(M); rownames(VISITED) = rownames(X)
+            DBSCAN_RETVALS = DO_DBSCAN( X, D, MIN_SIZE, ORDERING_IN_USE )
+            DO_DBSCAN_PLOT( CLUSTERS )
+            if ( TRUE ) DRAW_BOUNDARIES( X[,1], X[,2], NUM_CLUSTERS, new_plot=FALSE )
+            SUMMARY[[i]] = PRINT_SUMMARY( CLUSTERS )
+            i = i + 1
+        }
+        # ############################################################################################
+        MINSIZE  = COLLECT_VECTOR( SUMMARY, function ( x ) x$NOISE_THRESHOLD)
+        EPSILON  = COLLECT_VECTOR( SUMMARY, function ( x ) x$FINAL_EPSILON)
+        NOISE    = COLLECT_VECTOR( SUMMARY, function ( x ) x$NOISE)
+        NCLUSTERS= COLLECT_VECTOR( SUMMARY, function ( x ) x$NC)
+        SUM_WSS  = COLLECT_VECTOR( SUMMARY, function ( x ) x$SUM_WSS)
+        AVG_WSS  = COLLECT_VECTOR( SUMMARY, function ( x ) x$AVG_WSS)
+        AVG_ICD  = COLLECT_VECTOR( SUMMARY, function ( x ) x$AVG_ICD)
+        METRICS  = COLLECT_VECTOR( SUMMARY, function ( x ) x$METRIC)
+        # ############################################################################################
+        plot( NCLUSTERS,     AVG_WSS*NCLUSTERS+AVG_ICD+SUM_WSS, t='p', cex=1.0, cex.axis=0.8, main="CLUSTERING COST vs. NUM.CLUSTERS" )
+        points( NCLUSTERS,   AVG_WSS*NCLUSTERS+AVG_ICD+SUM_WSS, pch='o', cex=3.0, col="black", cex.axis=1.0 )
+        text( NCLUSTERS+0.5, AVG_WSS*NCLUSTERS+AVG_ICD+SUM_WSS, cex=0.7, col="red", cex.axis=0.6, sprintf("M=%s E=%.2f N=%.2f", MINSIZE, EPSILON, NOISE/nrow(X)))
 
     dev.off()
     sink()
