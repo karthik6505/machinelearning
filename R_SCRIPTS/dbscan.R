@@ -165,16 +165,18 @@ TRANSITIVE_CLOSURE = function ( topitem, cid, MIN_LEADSIZE=5, debug=FALSE ) {
 DO_DBSCAN_PLOT = function( CLUSTERS ) {
     NOISE   = which( VISITED == 0 )
     VALID   = 1:M
+    C  = table(VISITED)
+    LC = length(which(names(C)!="0"))
 
     if ( ncol(X) == 2 ) {
         plot( X[,1], X[,2], 
             pch=".", col="gray", cex=0.8, 
-            main=sprintf("DBSCAN W/ EPS= %.3f M=%s |C|=%s", EPSILON, MIN_SIZE, length(table(VISITED)) ))
+            main=sprintf("DBSCAN W/ EPS= %.3f M=%s |C|=%s", EPSILON, MIN_SIZE, LC ))
     } else {
         Z = DO_PCA(X, vargoal=0.95, ntries=2  )$Z
         plot( Z[,1], Z[,2], 
             pch=".", col="gray", cex=0.8, 
-            main=sprintf("DBSCAN W/ EPS= %.3f M=%s |C|=%s", EPSILON, MIN_SIZE, length(table(VISITED)) ))
+            main=sprintf("DBSCAN W/ EPS= %.3f M=%s |C|=%s", EPSILON, MIN_SIZE, LC ))
     }
     grid()
 
@@ -305,16 +307,20 @@ DO_DBSCAN = function( X, D, MIN_SIZE, ORDERING_IN_USE, debug=FALSE ) {
 # ######################################################################################################
 PRINT_SUMMARY =function( CLUSTERS, debug=TRUE ) {
     cat( HEADER )
-    C     = table ( VISITED )
+    C  = table ( VISITED )
+    LC = length(which(names(C)!="0"))
+
     if ( debug ) {
         NOISE = length( which(VISITED==0) )
         CENTROIDS = GET_CENTROIDS_FOR( X, VISITED )
         TOTAL_WSS_SUM = sum(GET_MSE_FROM_CENTROIDS_FOR(X, VISITED, CENTROIDS=CENTROIDS, GET_WSS=TRUE ))
         TOTAL_MSE_SUM = sum(GET_MSE_FROM_CENTROIDS_FOR(X, VISITED, CENTROIDS=CENTROIDS, GET_WSS=FALSE ))
         AVG_BETWEEN_CLUSTER_DIST = mean(GET_DISTANCE_BETWEEN_CENTROIDS( CENTROIDS ))
-        METRIC=round((TOTAL_WSS_SUM + TOTAL_MSE_SUM * length(C) - AVG_BETWEEN_CLUSTER_DIST ) * length(C),2)
+        METRIC=round((TOTAL_WSS_SUM + TOTAL_MSE_SUM * LC - AVG_BETWEEN_CLUSTER_DIST ) * LC,2)
         print( paste( "FINAL EPSILON=",   round(EPSILON,3),
-                  "NOISE THRESHOLD=", MIN_SIZE, "NOISE=", NOISE, "|C|=", length(C), 
+                  "NOISE THRESHOLD=", MIN_SIZE, 
+                  "NOISE=", NOISE, 
+                  "|C|=", LC, 
                   'SUM(WSS)=', round(TOTAL_WSS_SUM,2), 
                   'AVG(WSS)=', round(TOTAL_MSE_SUM,2),
                   'AVG(ICD)=', round(AVG_BETWEEN_CLUSTER_DIST,2),
@@ -327,7 +333,7 @@ PRINT_SUMMARY =function( CLUSTERS, debug=TRUE ) {
     retvals = list ( "FINAL_EPSILON"=round(EPSILON,3),
                      "NOISE_THRESHOLD"=MIN_SIZE, 
                      "NOISE"=NOISE, 
-                     "NC"=length(C), 
+                     "NC"=LC,
                      'SUM_WSS'=round(TOTAL_WSS_SUM,2), 
                      'AVG_WSS'=round(TOTAL_MSE_SUM,2),
                      'AVG_ICD'=round(AVG_BETWEEN_CLUSTER_DIST,2),
@@ -340,6 +346,7 @@ PRINT_SUMMARY =function( CLUSTERS, debug=TRUE ) {
 # ######################################################################################################
 GET_CENTROIDS_FOR = function( X, MAPPING ) {
     C    = table( MAPPING )
+    C[which(names(C)!="0")]
     CIDS = as.numeric(names(C))
 
     NC = length(CIDS)
