@@ -313,10 +313,13 @@ PRINT_SUMMARY =function( CLUSTERS, debug=TRUE ) {
     if ( debug ) {
         NOISE = length( which(VISITED==0) )
         CENTROIDS = GET_CENTROIDS_FOR( X, VISITED )
-        TOTAL_WSS_SUM = sum(GET_MSE_FROM_CENTROIDS_FOR(X, VISITED, CENTROIDS=CENTROIDS, GET_WSS=TRUE ))
-        TOTAL_MSE_SUM = sum(GET_MSE_FROM_CENTROIDS_FOR(X, VISITED, CENTROIDS=CENTROIDS, GET_WSS=FALSE ))
-        AVG_BETWEEN_CLUSTER_DIST = mean(GET_DISTANCE_BETWEEN_CENTROIDS( CENTROIDS ))
-        METRIC=round((TOTAL_WSS_SUM + TOTAL_MSE_SUM * LC - AVG_BETWEEN_CLUSTER_DIST ) * LC,2)
+        SUM_WSS   = TOTAL_WSS_SUM = sum(GET_MSE_FROM_CENTROIDS_FOR(X, VISITED, CENTROIDS=CENTROIDS, GET_WSS=TRUE ))
+        AVG_WSS   = TOTAL_MSE_SUM = sum(GET_MSE_FROM_CENTROIDS_FOR(X, VISITED, CENTROIDS=CENTROIDS, GET_WSS=FALSE ))
+        AVG_ICD   = AVG_BETWEEN_CLUSTER_DIST = mean(GET_DISTANCE_BETWEEN_CENTROIDS( CENTROIDS ))
+        NCLUSTERS = LC
+
+        CLUSTERING_COST = round(SUM_WSS + (AVG_WSS * NCLUSTERS) - AVG_ICD + sqrt(NOISE) + NCLUSTERS,2)
+
         print( paste( "FINAL EPSILON=",   round(EPSILON,3),
                   "NOISE THRESHOLD=", MIN_SIZE, 
                   "NOISE=", NOISE, 
@@ -324,7 +327,7 @@ PRINT_SUMMARY =function( CLUSTERS, debug=TRUE ) {
                   'SUM(WSS)=', round(TOTAL_WSS_SUM,2), 
                   'AVG(WSS)=', round(TOTAL_MSE_SUM,2),
                   'AVG(ICD)=', round(AVG_BETWEEN_CLUSTER_DIST,2),
-                  'METRIC=', METRIC ))
+                  'METRIC=', CLUSTERING_COST ))
     }
     print( C )
     cat( HEADER )
@@ -337,7 +340,7 @@ PRINT_SUMMARY =function( CLUSTERS, debug=TRUE ) {
                      'SUM_WSS'=round(TOTAL_WSS_SUM,2), 
                      'AVG_WSS'=round(TOTAL_MSE_SUM,2),
                      'AVG_ICD'=round(AVG_BETWEEN_CLUSTER_DIST,2),
-                     'METRIC'=METRIC )
+                     'METRIC'=CLUSTERING_COST )
     return(  retvals )
 }
 # ######################################################################################################
@@ -355,7 +358,7 @@ GET_CENTROIDS_FOR = function( X, MAPPING ) {
 
     for ( i in 1:NC) {
         WHICH_ONES    = which(MAPPING==CIDS[i])
-        CENTROIDS[i,] = mean(X[WHICH_ONES,])
+        CENTROIDS[i,] = apply( X[WHICH_ONES,], 2, mean) #  mean(X[WHICH_ONES,])
     }
     return ( CENTROIDS )
 }
@@ -419,14 +422,11 @@ if ( DO_DBTEST ) {
     NUM_SAMPLES_PER_CLUSTER = 500
     NUM_CLUSTERS            = 5
     DIMENSIONALITY          = 2
-    SD = 0.2
-    SD_X <<- c(SD+.1, SD+0.1, SD+0.1, SD+0.1, SD+0.1 )
-    MU_X <<- c(    0,      1,      2,      3,      4 )
-    X      = GET_CLUSTERED_X( MM=NUM_SAMPLES_PER_CLUSTER, 
-                              NN=NUM_CLUSTERS, 
+    X      = GET_CLUSTERED_X( M=NUM_SAMPLES_PER_CLUSTER, 
                               N=DIMENSIONALITY, 
-                              SD_X, 
-                              MU_X )
+                              NC=NUM_CLUSTERS, 
+                              MU_X=seq(0.0, NUM_CLUSTERS-1, 1),
+                              SD_X=rep(0.3, NUM_CLUSTERS) )
     M      = nrow(X)
     N      = ncol(X)
 
@@ -437,7 +437,7 @@ if ( DO_DBTEST ) {
     # ############################################################################################
     DISTANCE_MATRIX_X = as.matrix( dist( X, upper=TRUE, diag=TRUE ) )
 
-    ORIGINAL_EPSILON  = GET_INITIAL_EPSILON_ESTIMATE_FOR( X, DISTANCE_MATRIX_X, epsilon=0.15, q=0.99 )
+    ORIGINAL_EPSILON  = GET_INITIAL_EPSILON_ESTIMATE_FOR( X, DISTANCE_MATRIX_X, epsilon=0.10, q=0.99 )
 
     ORDERING_IN_USE   = as.numeric(names( sort( rowSums(DISTANCE_MATRIX_X<ORIGINAL_EPSILON), decreasing=TRUE ) ))          
     # ############################################################################################
@@ -465,9 +465,23 @@ if ( DO_DBTEST ) {
         AVG_ICD  = COLLECT_VECTOR( SUMMARY, function ( x ) x$AVG_ICD)
         METRICS  = COLLECT_VECTOR( SUMMARY, function ( x ) x$METRIC)
         # ############################################################################################
-        plot( NCLUSTERS,     AVG_WSS*NCLUSTERS+AVG_ICD+SUM_WSS, t='p', cex=1.0, cex.axis=0.8, main="CLUSTERING COST vs. NUM.CLUSTERS" )
-        points( NCLUSTERS,   AVG_WSS*NCLUSTERS+AVG_ICD+SUM_WSS, pch='o', cex=3.0, col="black", cex.axis=1.0 )
-        text( NCLUSTERS+0.5, AVG_WSS*NCLUSTERS+AVG_ICD+SUM_WSS, cex=0.7, col="red", cex.axis=0.6, sprintf("M=%s E=%.2f N=%.2f", MINSIZE, EPSILON, NOISE/nrow(X)))
+
+        # ############################################################################################
+        CLUSTERING_COST = SUM_WSS + (AVG_WSS * NCLUSTERS) - AVG_ICD + sqrt(NOISE) + NCLUSTERS^2
+                             
+        plot( NCLUSTERS,     CLUSTERING_COST,
+                             t='p', main="CLUSTERING COST (Y) vs. NUM.CLUSTERS (X)", 
+                             cex=1.0, cex.axis=0.8, 
+                             xlab="SUM_WSS + (AVG_WSS * NCLUSTERS) - AVG_ICD + SQRT(|NOISE|) + NCLUSTERS^2",
+                             xlim=c(min(NCLUSTERS)-1, max(NCLUSTERS)+1) )
+
+        points( NCLUSTERS,   CLUSTERING_COST, 
+                             pch='o', cex=3.0, col="black", cex.axis=1.0 )
+
+        TEXT_POSITION = ifelse( NCLUSTERS>max(NCLUSTERS), NCLUSTERS-1, NCLUSTERS+0.2 )
+        text( TEXT_POSITION, CLUSTERING_COST, sprintf("M=%s E=%.2f N=%.2f", MINSIZE, EPSILON, NOISE/nrow(X)),
+                             cex=0.7, col="red", cex.axis=0.7 )
+        # ############################################################################################
 
     dev.off()
     sink()
