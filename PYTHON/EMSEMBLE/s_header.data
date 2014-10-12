@@ -1,0 +1,21 @@
+FEATURE_DESCRIPTION_HEADER = '''
+     1. predict:                  1 or 0
+     2. V02:                      continuous
+     3. V03:                      continuous
+     4. V04:                      continuous
+     5. V05:                      continuous
+     6. V06:                      continuous
+     7. V07:                      continuous
+     8. V08:                      continuous
+     9. V09:                      continuous
+     0. V10:                      continuous
+     1. V11:                      continuous
+     2. V12:                      continuous
+     3. V13:                      continuous
+     4. V14:                      continuous
+     5. V15:                      continuous
+     6. V16:                      continuous
+     7. V17:                      continuous
+     8. V18:                      continuous
+     9. V19:                      continuous
+    '''
