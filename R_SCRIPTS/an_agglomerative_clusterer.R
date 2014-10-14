@@ -24,24 +24,22 @@
 sink('output.hierarchical.agg.clustering.out', split=TRUE)
 # ######################################################################################################
 
-LICENSETEXT = "These R code samples (version Sep/2014), Copyright (C) Nelson R. Manohar,
+LICENSETEXT = "****
+These R code samples (version Sep/2014), Copyright (C) Nelson R. Manohar,
 comes with ABSOLUTELY NO WARRANTY.  This is free software, and you are welcome to 
-redistribute it under conditions of the GNU General Public License.
+redistribute it under conditions of the GNU General Public License."
 
-*****
-
-                               UNFINISHED
-                       FOR ILLUSTRATIVE PURPOSES 
-
-
+WARNING = "*****
+*****                          UNFINISHED
+*****                  FOR ILLUSTRATIVE PURPOSES 
 ***** This is NOT the PROPER hierarchical agglomerative clustering                   ****
 ***** This is an experimental and O(inefficient) variant of agglomerative clustering ****
-***** YET somewhat suite for explorative purposes                                    ****
-*****
-"
+***** YET better suited for illustrative/explorative purposes.                       ****
+*****"
 
 
 message( LICENSETEXT )
+message( WARNING )
 message("")
 # ######################################################################################################
 
@@ -360,8 +358,8 @@ TERMINATE = function (debug=FALSE) {
         print( WN )
         print( SLIWN )
         cat( HEADER )
-        if ( length(W) == 1 )
-            if ( abs( SLIWN - nrow(ORIG_X) ) < (0.20 * nrow(ORIG_X))) {
+        if ( length(W) <= 2 )
+            if ( abs( SLIWN - nrow(ORIG_X) ) < (0.10 * nrow(ORIG_X))) {
                 print ( "TERMINATING" )
                 FIN = TRUE
             }
@@ -372,14 +370,14 @@ TERMINATE = function (debug=FALSE) {
 
 
 # ######################################################################################################
-AGGLOMERATIVE_ITERATOR = function( ORIG_X, D, EPSILON, STEP, REWRITE_PDF=FALSE, DEBUG=FALSE ) {
+AGGLOMERATIVE_ITERATOR = function( ORIG_X, D, EPSILON, STEP, REWRITE_PDF=TRUE, DEBUG=FALSE ) {
     XX = ORIG_X
     DD = D
 
     graphics.off()
-    dev.new( X11, 12, 12 )
+    dev.new( X11, 16, 12 )
     dPDF = dev.set()
-    op = par( mfrow=c( 3, 3 ) )
+    op = par( mfrow=c( P, P ) )
 
     # X11() # http://stackoverflow.com/questions/8058606/saving-plot-as-pdf-and-simultaneously-display-it-in-the-window-x11
     dev.new( X11, 11, 8 )
@@ -388,7 +386,7 @@ AGGLOMERATIVE_ITERATOR = function( ORIG_X, D, EPSILON, STEP, REWRITE_PDF=FALSE, 
 
     sunflowerplot( ORIG_X[,1], ORIG_X[,2], main=sprintf( "USING BASE CLUSTERING DISTANCE (EPS)=%.2f", EPSILON ), pch="+", col="gray", cex=1.0 )
 
-    for ( idx in 1:min(9,(10*MAXHEIGTH)) ) {
+    for ( idx in 1:min(2*P^2,(10*MAXHEIGTH)) ) {
         cat(HEADER)
         cat(HEADER)
 
@@ -419,9 +417,7 @@ AGGLOMERATIVE_ITERATOR = function( ORIG_X, D, EPSILON, STEP, REWRITE_PDF=FALSE, 
 
         PRINT_MAPPING( )
 
-        if (REWRITE_PDF)
-            dev.copy2pdf(file = sprintf("plot_agglclust_cluster_current_generation.pdf"))
-        else
+        if (!REWRITE_PDF)
             dev.copy2pdf(file = sprintf("plot_agglclust_cluster_generation_%s.pdf", idx ))
 
         dev.set( dPDF )
@@ -429,6 +425,8 @@ AGGLOMERATIVE_ITERATOR = function( ORIG_X, D, EPSILON, STEP, REWRITE_PDF=FALSE, 
         dev.set( dev.prev() )
         NEWLINE(3)
     }
+
+    if (REWRITE_PDF) dev.copy2pdf(file = sprintf("plot_agglclust_cluster_current_generation.pdf"))
 
     print( "PDF plots were generated under filenames plot_aggclust_cluster_generation_x.pdf to provide a visual snapshop of the cluster assigment" )
     print( "PDF plots were generated under filenames plot_aggclust_cluster_generation_x.pdf to provide a visual snapshop of the cluster assigment" )
@@ -551,7 +549,7 @@ DRAW_TREE = function( iter="" ) {
         g = simplify(g)
     }
     plot.igraph( g, edge.arrow.size=0.15, main=sprintf("AGGLOMERATIVE CLUSTERING\nAT GENERATION %s", iter), xlab=sprintf( "MSE=%.3f  EPS=%.3f", MSE, EPS ))
-    dev.copy2pdf(file = sprintf("plot_agglclust_cluster_hierachy.pdf" ))
+    dev.copy2pdf(file = sprintf("plot_agglclust_cluster_hierachy-%s.pdf", as.integer((iter-1)/P^2)))
     return()
 }
 # ######################################################################################################
@@ -577,12 +575,15 @@ MAPPING         = c()
 DEBUG           = FALSE
 CLUSTERNAME_BASE= LETTERS
 NUMBER_CLUSTERS = 0
+P               = 2
 
 INDEXING        = list()
 for ( rown in rownames(ORIG_X) ) 
     INDEXING[[rown]] = rown
 
 RETVALS = AGGLOMERATIVE_ITERATOR( ORIG_X, D, EPS, STEP, DEBUG=FALSE )
+
+message( WARNING )
 
 options( opts )
 sink()
