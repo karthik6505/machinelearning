@@ -202,12 +202,13 @@ DO_DBSCAN_PLOT = function( CLUSTERS ) {
 # #################################################################################################
 # for ( e in seq(0.05,0.6,0.05)) hist( rowSums(DISTANCE_MATRIX_X < e ))
 # #################################################################################################
-GET_INITIAL_EPSILON_ESTIMATE_FOR = function( X, D, epsilon=NA, NMIN=500, q=1.0, debug=FALSE ) {
-    NMIN   = min(NMIN,nrow(X))
+GET_INITIAL_EPSILON_ESTIMATE_FOR = function( X, D, epsilon=NA, NMIN=500, q=1.0, STEP=1E-3, debug=FALSE ) {
+    M      = nrow(X)
+    NMIN   = min(NMIN,M)
     MINCON = min(0.05*M, sqrt(M))
 
-    SUBSAMPLED = sample(1:nrow(D), min(nrow(D),NMIN))
-    DD = DISTANCE_MATRIX_X[SUBSAMPLED, ] 
+    SUBSAMPLED = sample(1:M, NMIN )
+    DD = D[SUBSAMPLED, ] 
 
     EPSILON = NA
     for ( EPSILON in  seq(STEP,1,STEP) ) {
@@ -216,10 +217,12 @@ GET_INITIAL_EPSILON_ESTIMATE_FOR = function( X, D, epsilon=NA, NMIN=500, q=1.0, 
         if( debug) print( paste ( EPSILON, OUTDEGREE_STAT, MINCON ) )
         if ( OUTDEGREE_STAT > MINCON ) break
     }
+
     EPSILON = ifelse( is.na(EPSILON), 0.3, EPSILON )
+
     if ( debug ) {
         cat ( HEADER )
-        print( t(rowSums(ifelse( DISTANCE_MATRIX_X<EPSILON, 1, 0 ))) ) 
+        print( t(rowSums(ifelse( D<EPSILON, 1, 0 ))) ) 
         cat ( HEADER )
     }
 
@@ -437,7 +440,7 @@ if ( DO_DBTEST ) {
     # ############################################################################################
     DISTANCE_MATRIX_X = as.matrix( dist( X, upper=TRUE, diag=TRUE ) )
 
-    ORIGINAL_EPSILON  = GET_INITIAL_EPSILON_ESTIMATE_FOR( X, DISTANCE_MATRIX_X, epsilon=0.10, q=0.99 )
+    ORIGINAL_EPSILON  = GET_INITIAL_EPSILON_ESTIMATE_FOR( X, DISTANCE_MATRIX_X, epsilon=0.10, q=0.99, STEP=STEP )
 
     ORDERING_IN_USE   = as.numeric(names( sort( rowSums(DISTANCE_MATRIX_X<ORIGINAL_EPSILON), decreasing=TRUE ) ))          
     # ############################################################################################

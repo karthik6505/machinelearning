@@ -37,48 +37,32 @@ require(nortest)
 
 
 # ###############################################################################
-# List of 9
-#  $ statistic  : Named num 2.24
-#   ..- attr(*, "names")= chr "t"
-#  $ parameter  : Named num 243
-#   ..- attr(*, "names")= chr "df"
-#  $ p.value    : num 0.0261
-#  $ conf.int   : atomic [1:2] 2.82 3.17
-#   ..- attr(*, "conf.level")= num 0.95
-#  $ estimate   : Named num 3
-#   ..- attr(*, "names")= chr "mean of x"
-#  $ null.value : Named num 2.8
-#   ..- attr(*, "names")= chr "mean"
-#  $ alternative: chr "two.sided"
-#  $ method     : chr "One Sample t-test"
-#  $ data.name  : chr "x"
-#  - attr(*, "class")= chr "htest"
-# ###############################################################################
 # t-test, 1 sample, two sided, high confidence: 
 # could observed sample mean be representative of the historically sampled source?
 # ###############################################################################
-COULD_SAMPLE_MEAN_BE_REPRESENTATIVE_OF = function ( x, sample_mean, confidence_level=0.999, debug=TRUE ) {
+COULD_SAMPLE_MEAN_BE_REPRESENTATIVE_OF = function ( x, sample_mean, confidence_level=0.999, silent=FALSE, debug=FALSE ) {
+    print( "COULD_THIS_VALUE_BE_A_REPRESENTATIVE_SAMPLE_MEAN_OF_THIS_SOURCE?" ) 
+
     rval = t.test( x, alternative="two.sided", mu=sample_mean, conf.level=confidence_level ) 
-    if ( debug ) {
-        print ( rval )
-        str( rval )
-    }
+
+    if ( !silent ) print( rval )
+    if ( debug )   str( rval )
+
     confint = rval$"conf.int"
     pval    = rval$"p.value"
     if ( is.na( pval ) ) {
         if ( !any( x != x ) ) print( "WARNING: x and y given are the exact same vector, trivial result follows" )
         pval = 1 
     }
-    if ( sample_mean >= confint[1] && sample_mean <= confint[2] ) {
+
+    H1 = sprintf("that true mean of X is not equal to [%s]; mean is [%8.4f]?", sample_mean, mean(x))
+
+    if ( pval > 2E-3 ) {
         accept_h0 = TRUE
-        if ( pval > 25E-2 ) {
-            print ( sprintf( "(%s, %8.5g): REJECT H1: i.e., true mean(x) is not equal to [%s] IS rejected; with mean [%8.4f]?", accept_h0, pval, sample_mean, mean(x) ) )
-        } else {
-            print ( sprintf( "(%s, %8.5g): WEAK REJECT H1: i.e., true x-mean is not equal to [%s] IS weak and inconsistent; with mean [%8.4f]?", accept_h0, pval, sample_mean, mean(x) ) )
-        }
+        print ( sprintf( "(%s, %8.5g): REJECT H1: %s", accept_h0, pval, H1 ) )
     } else {
         accept_h0 = FALSE
-        print ( sprintf( "(%s, %8.5g): ACCEPT H1: i.e, true mean(x) is not equal to this [%s] IS NOT rejected; with mean [%8.4f]?", accept_h0, pval, sample_mean, mean(x) ) )
+        print ( sprintf( "(%s, %8.5g): ACCEPT H1: %s", accept_h0, pval, H1 ) )
     }
     rval = list( accept_h0, rval )
     return ( rval )
@@ -93,7 +77,9 @@ COULD_SAMPLE_MEAN_BE_REPRESENTATIVE_OF = function ( x, sample_mean, confidence_l
 # i.e., large enough p-val asserts that alternative hypothesis H1 (x is not 
 #       normally distributed) is NOT relevant
 # ###############################################################################
-IS_NORMALLY_DISTRIBUTED = function( x, nmin=0, plevel = 1E-1, debug=TRUE ) {
+IS_NORMALLY_DISTRIBUTED = function( x, nmin=0, plevel = 1E-1, silent=FALSE, debug=FALSE ) {
+    print( "ARE_THEY_NORMALLY_DISTRIBUTED?" ) 
+
     if ( nmin != 0 ) {
         nmin = min(nmin, length(x))
         x = sample( x, nmin )
@@ -101,11 +87,10 @@ IS_NORMALLY_DISTRIBUTED = function( x, nmin=0, plevel = 1E-1, debug=TRUE ) {
     accept_h0 = FALSE
     accept_h1 = FALSE
     rval = shapiro.test( x )
-    if ( debug ) {
-        print ( x )
-        print( rval )
-        str( rval )
-    }
+
+    if ( !silent ) print( rval )
+    if ( debug )   str( rval )
+
     pval = rval$"p.value"
     if ( is.na( pval ) ) {
         if ( !any( x != x ) ) print( "WARNING: p.value was NA" )
@@ -131,6 +116,8 @@ IS_NORMALLY_DISTRIBUTED = function( x, nmin=0, plevel = 1E-1, debug=TRUE ) {
 # http://en.wikipedia.org/wiki/Kurtosis
 # ###############################################################################
 IS_NORMAL_WRT_ADDITIONAL_NORMALITY_TESTS = function( x, plevel=5E-3, nmax=4096, confidence_level=0.999, plot=FALSE, ... ) {
+    print( "IS_NORMAL_WRT_ADDITIONAL_NORMALITY_TESTS?" ) 
+
     # skewness and kurtosis, they should be around (0,3)
     s = moments::skewness(x)           # the skew of a normal distribution should be 0 as it is pretty much symmetric
     k = moments::kurtosis(x)           # the kurtosis of a normal distributed variable is about 3 so that excess kurtosis is cancelled
@@ -183,7 +170,9 @@ IS_NORMAL_WRT_ADDITIONAL_NORMALITY_TESTS = function( x, plevel=5E-3, nmax=4096, 
 # 99.9 percent confidence interval: 0.6543049 1.5283395
 # sample estimates:                 ratio of variances 1 
 # ###############################################################################
-ARE_VARIANCES_EQUAL = function( x, y, normal=TRUE, tmode="two.sided", nmin=0, plevel=5E-2, confidence_level=0.999, debug=TRUE, ... ) {
+ARE_VARIANCES_EQUAL = function( x, y, normal=TRUE, tmode="two.sided", nmin=0, plevel=5E-2, confidence_level=0.999, silent=FALSE, debug=FALSE, ... ) {
+    print( "ARE_VARIANCES_EQUAL?" ) 
+
     H0 = "variances are as claimed"
     H1 = "variances are NOT as claimed"
     accept_h0 = FALSE
@@ -198,10 +187,10 @@ ARE_VARIANCES_EQUAL = function( x, y, normal=TRUE, tmode="two.sided", nmin=0, pl
     } else {
         rval = ansari.test( x, y, alternative=tmode, conf.level = confidence_level, ... )
     }
-    if ( debug ) {
-        print(rval)
-        str(rval)
-    }
+
+    if (!silent ) print( rval )
+    if ( debug )  str(rval)
+
     pval = rval$"p.value"
     if ( is.na( pval ) ) {
         if ( !any( x != x ) ) print( "WARNING: x and y given are the exact same vector, trivial result follows" )
@@ -210,7 +199,7 @@ ARE_VARIANCES_EQUAL = function( x, y, normal=TRUE, tmode="two.sided", nmin=0, pl
     if ( pval > plevel ) {
         accept_h0 = TRUE
         accept_h1 = FALSE
-        print ( sprintf( "(%s, %8.5g): REJECT H1 -- which claims ration of variances is NOT 1", accept_h0,  pval) )
+        print ( sprintf( "(%s, %8.5g): REJECT H1 -- which claims ratio of variances is NOT 1", accept_h0,  pval) )
     }
     retval = list( accept_h0, pval, rval )
     return ( retval )
@@ -244,7 +233,9 @@ ARE_VARIANCES_EQUAL = function( x, y, normal=TRUE, tmode="two.sided", nmin=0, pl
 #  $ method     : chr " Two Sample t-test"
 #  $ data.name  : chr "x and y"                 - attr(*, "class")= chr "htest"
 # ###############################################################################
-IS_MEAN_EFFECT_ON_THESE_THE_SAME = function( x=c(), y=c(), factor_formula="", confidence_level=0.999, var_equal=TRUE, nmax=0, do_test=TRUE, debug=TRUE, ... ) {
+IS_MEAN_EFFECT_ON_THESE_THE_SAME = function( x=c(), y=c(), factor_formula="", confidence_level=0.999, var_equal=TRUE, nmax=0, do_test=TRUE, debug=FALSE, ... ) {
+    print( "IS_MEAN_EFFECT_ON_THESE_THE_SAME?" ) 
+
     accept_h0 = FALSE
     accept_h1 = FALSE
     if ( factor_formula != "" && class(x)=="data.frame" ) {
@@ -304,7 +295,9 @@ IS_MEAN_EFFECT_ON_THESE_THE_SAME = function( x=c(), y=c(), factor_formula="", co
 # H0: there is no difference between the means and they likely come from similar sources
 # H1: there is a difference between the means and they likely come from different sources
 # ###############################################################################
-ARE_THESE_REPRESENTATIVE_OF_SAME_SOURCE = function( x, y, nmax=0, confidence_level=0.999, ... ) {
+ARE_THESE_REPRESENTATIVE_OF_SAME_SOURCE = function( x, y, nmax=0, confidence_level=0.999, silent=FALSE, ... ) {
+    print( "ARE_THESE_REPRESENTATIVE_OF_SAME_SOURCE?" ) 
+
     accept_h0 = FALSE
     accept_h1 = FALSE
     if ( nmax != 0 ) {
@@ -313,7 +306,9 @@ ARE_THESE_REPRESENTATIVE_OF_SAME_SOURCE = function( x, y, nmax=0, confidence_lev
         y = sample( y, nmax )
     }
     rval = t.test( x, y, conf.level=confidence_level, paired=TRUE, ... ) 
-    print ( rval )
+
+    if (!silent) print ( rval )
+
     confint = rval$"conf.int"
     pval    = rval$"p.value"
     if ( is.na( pval ) ) {
@@ -333,6 +328,7 @@ ARE_THESE_REPRESENTATIVE_OF_SAME_SOURCE = function( x, y, nmax=0, confidence_lev
             print ( sprintf( "(%s, %8.5g): ACCEPT H1: where H1 is, that difference in means is NOT zero & both from different source", accept_h0, pval ) )
         }
     }
+
     retval = list( accept_h0, pval, rval )
     return ( retval )
 }
@@ -388,3 +384,39 @@ ITERATE_ON_TEST = function( test_to_apply, x, y, ntries=10, nmax=0, confidence_l
     return ( retval )
 }
 # ###############################################################################
+
+
+
+# ###############################################################################
+ARE_SAMPLES_MEANINGFULLY_CORRELATED = function( X, Y, plevel=0.999, silent=FALSE, ... ) {
+    print( "ARE_SAMPLES_MEANINGFULLY_CORRELATED?" ) 
+    accept_h0 = FALSE
+
+    CXY = cor.test( X, Y, conf.level=plevel, ... )
+    if (!silent) print (CXY)
+
+    confint = CXY$conf.int
+    pval    = CXY$p.value
+
+    H1 = sprintf("that true correlation [%s,%s] is NOT equal to 0", CXY$method, CXY$alternative )
+
+    if ( pval > 1E-3 ) {
+        accept_h0 = TRUE
+        accept_h1 = FALSE
+        print ( sprintf( "(%s, %8.5g): REJECT H1: where H1 is, %s", accept_h1, pval, H1 ) )
+    } 
+    else 
+    {
+        if ( pval < 1E-6  || confint[1] < 0 && confint[2] > 0 && pval < 1E-3 ) {
+            accept_h0 = FALSE
+            accept_h1 = TRUE
+            print ( sprintf( "(%s, %8.5g): ACCEPT H1: where H1 is, %s", accept_h1, pval, H1 ) )
+        }
+    }
+
+    retval = list( accept_h0, pval )
+    return ( CXY )
+}
+# ###############################################################################
+
+

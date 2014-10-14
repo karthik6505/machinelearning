@@ -525,23 +525,61 @@ GET_RANDOM_XY = function( M=1000, N=5 ) {
 
 
 # ######################################################################################################
-GET_CLUSTERED_X = function( M=100, N=2, NC=5, MU_X=seq(0,NC-1,1), SD_X=rep(0.1, NC)) {
+GET_CLUSTERED_X = function( M=100, NFEATURES=2, NCLUSTERS=5, MU_X=seq(0,NCLUSTERS-1,1), SD_X=rep(0.1, NCLUSTERS), PATTERN="LINE", IDX=c(), SD=0) {
 
     cat ( HEADER )
-    print( sprintf( "X comprises: %s samples sets from %s normal random sources across a %s dimensional space", M, NC, N ) ) 
-    print( sprintf( "MU[%s]=%.2f", 1:NC, MU_X ) )
-    print( sprintf( "SD[%s]=%.2f", 1:NC, SD_X ) )
+    print( sprintf( "X comprises: %s samples sets from %s normal random sources across a %s dimensional space", M*NCLUSTERS, NCLUSTERS, NFEATURES ) ) 
+    print( sprintf( "MU[%s]=%.2f", 1:NCLUSTERS, MU_X ) )
+    print( sprintf( "SD[%s]=%.2f", 1:NCLUSTERS, SD_X ) )
     cat ( HEADER )
 
-    # a 2-dimensional example
-    x <- rbind(matrix(rnorm(M, mean = MU_X[1], sd = SD_X[1]), ncol = 2),
-               matrix(rnorm(M, mean = MU_X[2], sd = SD_X[2]), ncol = 2),
-               matrix(rnorm(M, mean = MU_X[3], sd = SD_X[3]), ncol = 2),
-               matrix(rnorm(M, mean = MU_X[4], sd = SD_X[4]), ncol = 2),
-               matrix(rnorm(M, mean = MU_X[5], sd = SD_X[5]), ncol = 2))
-    colnames(x) <- c("x", "y")
-    rownames(x) <- 1:nrow(x)
-    X = x
+
+    # a 2-dimensional example (taken from an R manpage?)
+    if ( length(IDX)== 0 ) {
+        if ( PATTERN == "LINE" )   
+            IDX = rep(c(1,rep(1,NFEATURES-1),
+                        2,rep(2,NFEATURES-1),
+                        3,rep(3,NFEATURES-1),
+                        4,rep(4,NFEATURES-1),
+                        5,rep(5,NFEATURES-1)),10)
+        if ( PATTERN == "SQUARE" ) 
+            IDX = rep(c(1,rep(1,NFEATURES-1),
+                        1,rep(5,NFEATURES-1),
+                        3,rep(3,NFEATURES-1),
+                        5,rep(1,NFEATURES-1),
+                        5,rep(5,NFEATURES-1)),10)
+        if ( PATTERN == "STAR" )   
+            IDX = rep(c(2,rep(1,NFEATURES-1),
+                        4,rep(1,NFEATURES-1),
+                        3,rep(5,NFEATURES-1),
+                        1,rep(5,NFEATURES_1),
+                        5,rep(3,NFEATURES_1)),10)
+    } else
+        IDX = MU_X
+
+    START = TRUE
+    MX = MATRIX( M, NFEATURES )
+    for ( idx in seq(1,(NFEATURES*NCLUSTERS),NFEATURES) ) {
+        for ( j in 1:(NFEATURES) )  {
+            MX[, (j)] = rnorm( M, mean = MU_X[IDX[idx+j-1]], sd = SD_X[IDX[idx+j-1]]+SD)
+            if ( any( is.na( MX ) ) ) print( summary( MX ) )
+        }
+
+        cluster_idx = round((idx+1)/NFEATURES)
+        print( sprintf( "CLUSTER #%s:    MU[%s]=%.2f      SD[%s]=%.2f", cluster_idx, cluster_idx, MU_X[cluster_idx], cluster_idx, SD_X[cluster_idx] ) )
+        print( summary( MX ) )
+        cat ( HEADER )
+
+        if ( START ) {
+            START = FALSE
+            X = MX
+        } else { 
+            X = rbind( X, MX )
+        }
+    }
+    str(X)
+    colnames(X) <- paste( "X", 1:NFEATURES, sep="" )
+    rownames(X) <- 1:nrow(X)
     X = scale( X )
     return ( X )
 }
