@@ -387,6 +387,8 @@ AGGLOMERATIVE_ITERATOR = function( ORIG_X, D, EPSILON, STEP, REWRITE_PDF=TRUE, D
     sunflowerplot( ORIG_X[,1], ORIG_X[,2], main=sprintf( "USING BASE CLUSTERING DISTANCE (EPS)=%.2f", EPSILON ), pch="+", col="gray", cex=1.0 )
 
     for ( idx in 1:min(2*P^2,(10*MAXHEIGTH)) ) {
+        gc()
+
         cat(HEADER)
         cat(HEADER)
 
@@ -502,6 +504,49 @@ WRITE_TREE = function( debug=FALSE ) {
 
 
 # ######################################################################################################
+GET_CLUSTER_NAMES = function() {
+    CLUSTER_SUMMARY= table(MAPPING)
+    CLUSTER_NAMES  = names(CLUSTER_SUMMARY)
+    return ( CLUSTER_NAMES )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+GET_CENTROIDS = function() {
+    N              = ncol(ORIG_X)
+    CLUSTER_NAMES  = GET_CLUSTER_NAMES()
+    N_CLUSTERS     = length(CLUSTER_NAMES)
+    CENTROIDS      = CLUSTMAT[1:N_CLUSTERS,1:(N+1)]
+    CENTROIDS      = t(apply( CENTROIDS[,2:(N+1)], 1, function(x) { as.numeric(as.numeric(x)) }))
+    rownames(CENTROIDS) = CLUSTER_NAMES
+    return ( CENTROIDS )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+# http://www.statmethods.net/advstats/cluster.html
+# ######################################################################################################
+DRAW_DENDROGRAM = function( K=0, DO_PDF=TRUE ) {
+    CENTROIDS      = GET_CENTROIDS()
+    DENDROGRAM     = hclust( dist( CENTROIDS ) )
+    plot( DENDROGRAM, hang=TRUE, main=paste("DENDROGRAM(AGGLOMERATIVE CLUSTERING RELATIONSHIPS)"), cex=0.6, cex.axis=0.8 )
+    if ( K != 0 ) {
+        groups <- cutree(DENDROGRAM, k=K) # cut tree into K clusters
+        rect.hclust(DENDROGRAM, k=K, border="red") 
+    }
+    if ( DO_PDF ) {
+        print( "PDF plots generated under filename plot_aggclust_dendrogram_hierarchy.pdf to provide a visual snapshop of the cluster hierarchy" )
+        dev.copy( pdf, 'plot_aggclust_dendrogram_hierarchy.pdf', 11, 8 )
+        dev.off()
+    }
+    return (DENDROGRAM)
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
 DRAW_TREE = function( iter="" ) {
     N              = ncol(ORIG_X)
     CLUSTER_SUMMARY= table(MAPPING)
@@ -561,7 +606,7 @@ DRAW_TREE = function( iter="" ) {
 # ######################################################################################################
 # ######################################################################################################
 # ######################################################################################################
-ORIG_X          = GET_CLUSTERED_X( M=300, NCLUSTERS=5, NFEATURES=4, SD_X=rep(0.50,5), PATTERN="SQUARE", SD=0.0 )
+ORIG_X          = GET_CLUSTERED_X( M=500, NCLUSTERS=5, NFEATURES=4, SD_X=rep(0.50,5), PATTERN="SQUARE", SD=0.0 )
 D               = GET_D ( ORIG_X )
 CLUSTMAT        = MATRIX( nrow(ORIG_X), ncol(ORIG_X)+1, initval="" )
 NOISE_THRESHOLD = round(sqrt(nrow(ORIG_X))/2)
@@ -578,10 +623,13 @@ NUMBER_CLUSTERS = 0
 P               = 2
 
 INDEXING        = list()
-for ( rown in rownames(ORIG_X) ) 
+for ( rown in rownames(ORIG_X) )
     INDEXING[[rown]] = rown
 
 RETVALS = AGGLOMERATIVE_ITERATOR( ORIG_X, D, EPS, STEP, DEBUG=FALSE )
+
+# K could be extracted from the NUMBER OF SCC in the hierarchy graph 
+DRAW_DENDROGRAM( K=5, DO_PDF=TRUE )
 
 message( WARNING )
 

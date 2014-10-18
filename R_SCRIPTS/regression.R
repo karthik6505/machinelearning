@@ -354,6 +354,27 @@ OUTLIER_ID = function( residuals, nsl=3, silent=FALSE ) {
 
 
 # ######################################################################################################
+# http://www.rdatamining.com/examples/outlier-detection
+# ######################################################################################################
+GET_DENSITY_OUTLIERS = function( NUMERICAL_DATAFRAME=data.frame(), K_NEIGHBORS=5, TOP_N=3, DO_PLOT=FALSE) {
+    require(DMwR)
+
+    if ( nrow(NUMERICAL_DATAFRAME) == 0 )               # test case
+        NUMERICAL_DATAFRAME = iris[,1:4]                # remove "Species", which is a categorical column
+
+    OUTLIER.SCORES <- lofactor(NUMERICAL_DATAFRAME, k=K_NEIGHBORS)
+
+    OUTLIERS <- order(OUTLIER.SCORES, decreasing=T)[1:TOP_N] # pick top 5 as outliers
+    print(OUTLIERS)                                          # who are outliers
+
+    if ( DO_PLOT ) PLOT_DENSITY_OUTLIERS( NUMERICAL_DATAFRAME=data.frame() )
+
+    return( OUTLIERS )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
 ARE_THERE_RUNLENGTH_PATTERNS_IN_THE_RESIDUALS = function( RESIDUALS, LENGTHMAX=3, q=0.001, nsl=3 ) {
     print( 'ARE_THERE_RUNLENGTH_PATTERNS_IN_THE_RESIDUALS?' )
 

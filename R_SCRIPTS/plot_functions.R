@@ -204,3 +204,160 @@ DO_PERFORMANCE_CURVE_PLOT = function( x, y, xlab, ylab, ... ) {
 # #####################################################################################
 
 
+# #####################################################################################
+# http://www.rdatamining.com/examples/outlier-detection
+# #####################################################################################
+PLOT_DENSITY_OUTLIERS = function( NUMERICAL_DATAFRAME=data.frame(), debug=FALSE) {
+    require(DMwR)
+
+    OUTLIER.SCORES <- lofactor(NUMERICAL_DATAFRAME, k=5)
+    plot(density(OUTLIER.SCORES))
+
+    OUTLIERS <- order(OUTLIER.SCORES, decreasing=T)[1:5]    # pick top 5 as outliers
+    print(OUTLIERS)                                         # who are outliers
+
+    n <- nrow(NUMERICAL_DATAFRAME)
+    LABELS <- 1:n
+    LABELS[-OUTLIERS] <- "."
+    biplot(prcomp(NUMERICAL_DATAFRAME), cex=.8, xlabs=LABELS)
+
+    pch <- rep(".", n)
+    pch[OUTLIERS] <- "o"
+    col <- rep("black", n)
+    col[OUTLIERS] <- "red"
+    DO_PAIRS_PLOT(NUMERICAL_DATAFRAME, pch=pch, col=col)
+
+    return( OUTLIERS )
+}
+# #####################################################################################
+
+
+# #####################################################################################
+DO_PAIRS_PLOT = function( DATAFRAME, BASIC=FALSE, ... ) {
+    if ( BASIC ) 
+        pairs(DATAFRAME, ... )
+    else {
+        DO_ELIPSE_PAIRS_PLOT( XY, Y, plot="pairs", cex=0.2, ... )
+    }
+}
+# #####################################################################################
+
+
+# #####################################################################################
+# http://topepo.github.io/caret/visualizations.html
+# #####################################################################################
+DO_ELIPSE_PAIRS_PLOT = function( XY, Y, plot="ellipse", ... ) {
+    require(caret)
+    N = ncol(XY)
+    if ( plot == "ellipse" ) require(ellipse)
+    featurePlot(x = XY, y = Y, plot = plot, auto.key = list(columns = 3)) # add a key at the top
+}
+# #####################################################################################
+
+
+# #####################################################################################
+GET_LAYOUT_PARAMS = function( N ) {
+    if ( N == 2 ) return (c(2,1))
+    if ( N == 3 ) return (c(3,1))
+    if ( N == 4 ) return (c(4,1))
+    p=as.integer(sqrt(N))
+    print( p )
+    if ( p^2<N )
+        if ( p*(p+1) < N )
+            return (c(p+1,p+1))
+        else 
+            return (c(p+1, p))
+    else 
+        return ( c(p,p))
+}
+# #####################################################################################
+
+
+# #####################################################################################
+# http://topepo.github.io/caret/visualizations.html
+# #####################################################################################
+DO_DENSITY_PLOT = function( XY, Y, ... ) {
+    require(caret)
+    N = ncol(XY)
+    featurePlot(x = XY, y = Y, plot = "density", adjust = 1.5, pch = "|",
+                  scales = list(x = list(relation="free"), y = list(relation="free")), ...,
+                  auto.key = list(columns = 3))
+}
+# #####################################################################################
+
+
+# #####################################################################################
+# http://topepo.github.io/caret/visualizations.html
+# #####################################################################################
+DO_BOXPLOT_PLOT = function( XY, Y, ... ) {
+    N = ncol(XY)
+    featurePlot(x = XY, y = Y, plot = "box", scales = list(y = list(relation="free"), x = list(rot = 90)),
+                  layout = GET_LAYOUT_PARAMS(N), auto.key = list(columns = 2))
+}
+# #####################################################################################
+
+
+# #####################################################################################
+# some of these graphics/gglot seem buggy in nature as they require toplevel env eval 
+# and thus, cannot be embedded into functions
+# #####################################################################################
+DO_FEATURE_EVAL_PLOTS = function(XY, Y, DO_PDF=FALSE, filename = "plot_feature_evaluations.pdf" ) {
+    N = ncol(XY)
+    if( DO_PDF ) pdf( filename, 11, 8 )
+    trellis.par.set(caretTheme(), warn = FALSE)					   
+    print(featurePlot(x = XY, y = Y, plot = "ellipse", auto.key = list(columns = 3)))
+    print(featurePlot(x = XY, y = Y, plot = "density", adjust = 1.5, pch = "|",
+                    scales = list(x = list(relation="free"), y = list(relation="free")), auto.key = list(columns = 3)))
+    print(featurePlot(x = XY, y = Y, plot = "box", scales = list(y = list(relation="free"), x = list(rot = 90)),
+                    layout = GET_LAYOUT_PARAMS(N), auto.key = list(columns = 2)))
+    if( DO_PDF ) dev.off()
+}
+# #####################################################################################
+
+
+# #####################################################################################
+# R layout manpage
+# #####################################################################################
+DO_SCATTERPLOT_WITH_HISTOGRAMS = function( x, y ) {
+     def.par <- par(no.readonly = TRUE) # save default, for resetting...
+     
+     ## divide the device into two rows and two columns
+     ## allocate figure 1 all of row 1
+     ## allocate figure 2 the intersection of column 2 and row 2
+     layout(matrix(c(1,1,0,2), 2, 2, byrow = TRUE))
+
+     ## show the regions that have been allocated to each plot
+     layout.show(2)
+     
+     ## divide device into two rows and two columns
+     ## allocate figure 1 and figure 2 as above
+     ## respect relations between widths and heights
+     nf <- layout(matrix(c(1,1,0,2), 2, 2, byrow = TRUE), respect = TRUE)
+     layout.show(nf)
+     
+     ## create single figure which is 5cm square
+     nf <- layout(matrix(1), widths = lcm(5), heights = lcm(5))
+     layout.show(nf)
+     
+     ##-- Create a scatterplot with marginal histograms -----
+     xhist <- hist(x, breaks = seq(-3,3,0.5), plot = FALSE)
+     yhist <- hist(y, breaks = seq(-3,3,0.5), plot = FALSE)
+     top <- max(c(xhist$counts, yhist$counts))
+     xrange <- c(-3, 3)
+     yrange <- c(-3, 3)
+     nf <- layout(matrix(c(2,0,1,3),2,2,byrow = TRUE), c(3,1), c(1,3), TRUE)
+     layout.show(nf)
+     
+     par(mar = c(3,3,1,1))
+     plot(x, y, xlim = xrange, ylim = yrange, xlab = "", ylab = "")
+     par(mar = c(0,3,1,1))
+     barplot(xhist$counts, axes = FALSE, ylim = c(0, top), space = 0)
+     par(mar = c(3,0,1,1))
+     barplot(yhist$counts, axes = FALSE, xlim = c(0, top), space = 0, horiz = TRUE)
+     
+     par(def.par)  #- reset to default
+}
+
+# #####################################################################################
+
+

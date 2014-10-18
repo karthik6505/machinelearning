@@ -646,3 +646,135 @@ VERIFY_OPTARG = function( OPTARG_NAME="", OPTARG_VALUE=NA ) {
 }
 # ######################################################################################################
 
+
+# ######################################################################################################
+# data frame form of named fields, selecting value field
+# ######################################################################################################
+GET_VECTOR_FROM_NAMED_VALUES = function( NAMED_VALUES, GET_NAMES=FALSE, BOTH=FALSE ) {
+    if (BOTH)       return ( as.data.frame(NAMED_VALUES) )
+    if (GET_NAMES)  return ( as.data.frame(NAMED_VALUES)[,1] )
+    return ( as.data.frame(NAMED_VALUES)[,2] )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+PUSH = function( Q, item, with_name="" ) {
+    n = GET_SIZE(Q)
+    if ( class(Q) == "list" )               { 
+        if( with_name=="" ) Q[[n+1]] = item else Q[[with_name]]= item 
+    }
+    else if ( class(Q) == "matrix" )        { 
+        Qnames = rownames(Q)
+        item   = t(as.matrix(item))
+        colnames(item) = colnames(Q)
+        if (ncol(item)==ncol(Q)) Q = rbind(Q, item ) 
+        rownames(Q) = c(Qnames, ifelse( with_name=="", n+1, with_name) )
+    }
+    else if ( class(Q) == "data.frame" )    { 
+        Qnames = rownames(Q)
+        item   = t(as.data.frame(item))
+        colnames(item) = colnames(Q)
+        if (ncol(item) == ncol(Q)) Q = rbind(Q, item ) 
+        rownames(Q) = c(Qnames, ifelse( with_name=="", n+1, with_name) )
+    }
+    else                                    { 
+        Qnames = names(Q)
+        Q = append( Q, item )
+        if( with_name != "" ) 
+            names(Q) = c(Qnames, with_name)
+    }
+    return ( Q )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+GET_SIZE = function( Q ) {
+    if ( class(Q) == "list" )               { n = length(Q) }
+    else if ( class(Q) == "matrix" )        { n = nrow(Q) }
+    else if ( class(Q) == "data.frame" )    { n = nrow(Q) }
+    else                                    { n = length(Q) }
+    return ( n )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+# LIFO ORDERING
+# ######################################################################################################
+POP = function( Q, ORDERING="LIFO" ) {
+    n = GET_SIZE( Q )
+    if ( identical( ORDERING, "LIFO" ) ) { TARGET=n; ORDERING = 1:(n-1) }
+    if ( identical( ORDERING, "FIFO" ) ) { TARGET=1; ORDERING = 2:n }
+
+    if ( class(Q) == "list" )               { 
+        if( is.null(names(Q))) { 
+            item   = Q[[TARGET]] 
+            Q      = Q[ORDERING] 
+        } else {
+            Qnames = names(Q) 
+            item   = Q[[Qnames[TARGET]]] 
+            Q      = Q[ORDERING] 
+        }
+    }
+    else if ( class(Q) == "matrix" )        { 
+        if( is.null(rownames(Q))) {
+            item = Q[TARGET,] 
+            Q    = Q[ORDERING,] 
+        } else {
+            item = Q[rownames(Q)[TARGET],] 
+            Q    = Q[rownames(Q)[ORDERING],] 
+        }
+    }
+    else if ( class(Q) == "data.frame" )    { 
+        if( is.null(rownames(Q))) {
+            item = Q[TARGET,] 
+            Q    = Q[ORDERING,] 
+        } else {
+            item = Q[rownames(Q)[TARGET],] 
+            Q    = Q[rownames(Q)[ORDERING],] 
+        }
+    }
+    else                                    { 
+        if( is.null(names(Q))) { 
+            item = Q[[TARGET]] 
+            Q    = Q[ORDERING] 
+        } else {
+            Qnames=names(Q) 
+            item = Q[[Qnames[TARGET]]] 
+            Q    = Q[Qnames[ORDERING]] 
+        }
+    }
+    return ( list( QUEUE=Q, ITEM=item ) )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+AS_DATAFRAME = function( XX, with_name="NOTSPECIFIED" ) {
+    if( class(XX)=="data.frame" )  XXnames= colnames(XX)
+    else if( class(XX)=="matrix" ) XXnames= colnames(XX)
+    else XXnames= c( with_name )
+    N = GET_SIZE( XX )
+    XX     = as.data.frame(cbind(XX,1:N))
+    colnames(XX) = c(XXnames, "DUMMY") 
+    return ( XX )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+SLICE_DATAFRAME = function( XX, which_columns=1:ncol(XX) ) {
+    if ( length(which_columns) == 1 )
+        DF = XX[which_columns]
+    else
+        DF = XX[,which_columns]
+    return ( DF )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+# ######################################################################################################
+
