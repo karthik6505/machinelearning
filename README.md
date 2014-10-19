@@ -15,6 +15,32 @@ This README would normally document whatever steps are necessary to get your app
     R analytics contain machine learning and predictive analytics in R
     for various general areas. Of course, these have not yet been optimized
     and thus are limited by your environment R's runtime limitations.
+    Some of these scripts are useful for educational purposes, so as to
+    illustrate, detailed inner-working graphics as how some of these
+    algorithms decision making and progress occurs over time. On most,
+    detailed error metrics are provided to facilitate automated 
+    decision-making.
+
+#### 28 -rw-rw-r-- 1 nrm nrm 25772 Oct 18 18:09 an_agglomerative_clusterer.R ####
+    An agglomerative clustering (for demonstrative purposes only, please
+    see disclaimers). Perhaphs useful for those in bioinformatics, philogeny, etc
+    seeking to understand the evolution of the clustering arrangements
+    and those whose interest is primarely on the interdependencies and 
+    arrangement of the branches as it automatically focuses on those (i.e.,
+    less overplotting as leaves are not plotted). Nevertheless, detailed
+    cluster assignment mappings are displayed during the agglomerative process.
+
+#### 16 -rw-rw-r-- 1 nrm nrm 14433 Oct 18 06:57 decision_trees.R ####
+    Under development. Basic decision trees.
+
+#### 28 -rw-rw-r-- 1 nrm nrm 25898 Oct 17 07:37 regression.R ####
+    Basic multivariate linear regression with assumptions checking.
+
+#### 24 -rw-rw-r-- 1 nrm nrm 21059 Oct 17 03:57 marginals.R ####
+    Basic recursive partitioning decision trees. Under development.
+
+####  4 -rw-rw-r-- 1 nrm nrm  1661 Oct 15 01:39 model_comparison.R ####
+    To be developed.
 
 #### 24 -rw-rw-r-- 1 nrm nrm 13787 Oct  4 22:54 dbscan.R    ####
     Implements a version of dbscan which instead uses transitive closure which 
