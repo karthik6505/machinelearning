@@ -187,8 +187,7 @@ DO_DECISION_TREE = function( XY, Y, FORMULA="", DO_PRUNING=TRUE, Q=0.1, ... ) {
     MODEL            = DETAILED_MODEL
     if ( DO_PRUNING ) {
         MODEL_CV         = printcp( DETAILED_MODEL )
-        R_ERROR_THRESHOLD= quantile( MODEL_CV[,'rel error'], 0.10)
-        Q = 0.10
+        R_ERROR_THRESHOLD= quantile( MODEL_CV[,'rel error'], Q)
         while( length(R_ERROR_THRESHOLD)== 0 ) {
             Q = Q + 0.01
             R_ERROR_THRESHOLD= quantile( MODEL_CV[,'rel error'], Q)
@@ -218,13 +217,13 @@ PLOT_TREE = function( MODEL, INCREMENTAL_MSE, CONFUSION_MATRIX ) {
     prp(MODEL, type=4, nn=TRUE, cex=0.7, extra=2, under=TRUE, branch=1, main="RECURSIVE PARTITIONING TREE")#, varlen=6)# Shorten variable names
     plot( INCREMENTAL_MSE, t='l', main="INCREMENTAL MSE" )
 
-    ACM = addmargins(CM)
+    ACM = addmargins(CONFUSION_MATRIX)
     ACM = apply( ACM, 2, function(x) x/x[length(x)] )
-    ACM = ACM[1:nrow(CM),1:ncol(CM)]
+    ACM = ACM[1:nrow(CONFUSION_MATRIX),1:ncol(CONFUSION_MATRIX)]
 
     colors = c("blue", "green", "brown", "red", "gray", "white", 20:40 )
-    plot( CONFUSION_MATRIX, main="CONFUSION MATRIX (CM)", col=colors[1:max(ncol(CM),nrow(CM))] )
-    plot( as.table(ACM), main="CLASS FREQUENCIES", col=colors[1:max(ncol(CM),nrow(CM))] )
+    plot( CONFUSION_MATRIX, main="CONFUSION MATRIX (CM)", col=colors[1:max(ncol(CONFUSION_MATRIX),nrow(CONFUSION_MATRIX))] )
+    plot( as.table(ACM), main="CLASS FREQUENCIES", col=colors[1:max(ncol(CONFUSION_MATRIX),nrow(CONFUSION_MATRIX))] )
 
     par( def.par )
     return ( ACM )
@@ -233,10 +232,11 @@ PLOT_TREE = function( MODEL, INCREMENTAL_MSE, CONFUSION_MATRIX ) {
 
 
 # ######################################################################################################
-PREDICT_TREE = function( XY, YTRUE, as_probas=FALSE ) {
+PREDICT_TREE = function( MODEL, XY, as_probas=FALSE ) {
     YP_PRED   = predict(MODEL, XY)
+    print( YP_PRED )
     if ( !as_probas ) {
-        YP_MATRIX = matrix(predict(MODEL), nrow(X))
+        YP_MATRIX = matrix(YP_PRED, nrow(XY))
         YP        = apply( YP_MATRIX, 1, function( x ) colnames(YP_PRED)[which(x == max(x))] )
         return ( YP )
     } else {
@@ -269,52 +269,101 @@ GET_CONFUSION_MATRIX = function( Y, YP ) {
 
 
 # ######################################################################################################
+FIT_DECISION_TREE = function( XY, Y, FORMULA=FORMULA, DO_PRUNING=TRUE, Q=0.1, minbucket=20, ... ) {
+    MODEL = DO_DECISION_TREE( XY, Y, FORMULA=FORMULA, DO_PRUNING=DO_PRUNING, Q=Q, minbucket=minbucket, ...)
+    return ( MODEL )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+APPLY_DECISION_TREE_MODEL = function( MODEL, XY, Y=c() ) {
+    YP   = PREDICT_TREE( MODEL, XY, as_probas=FALSE )
+    if( GET_SIZE(Y) != 0 ) {
+        IMSE  = GET_TREE_IMSE( Y, YP, total=FALSE )
+        CM    = GET_CONFUSION_MATRIX( Y, YP )
+        PLOT_TREE( MODEL, IMSE, CM )
+    } else {
+        IMSE  = rep(NA, GET_SIZE(YP) )
+        CM    = table( YP )
+        PLOT_TREE( MODEL, IMSE, CM )
+    }
+    RETVALS = list( MODEL=MODEL, IMSE=IMSE, CM=CM )
+    return ( RETVALS )
+}
+# ######################################################################################################
+
+
 # ######################################################################################################
 # ######################################################################################################
 # ######################################################################################################
 # ######################################################################################################
-    opts = options( width=132 )
-    golf = read.csv( 'golf.txt', sep="\t", header=TRUE, stringsAsFactors=TRUE )
-    XX   = SLICE_DATAFRAME( golf, 4 )
-    YY   = SLICE_DATAFRAME( golf, 7 )
-    # ######################################################################################################
+# ######################################################################################################
+    # ##################################################################################################
+    # golf = read.csv( 'golf.txt', sep="\t", header=TRUE, stringsAsFactors=TRUE )
+    # XX   = SLICE_DATAFRAME( golf, 4 )
+    # YY   = SLICE_DATAFRAME( golf, 7 )
+    # ##################################################################################################
     # PIVOT = FIND_MINIMUM_ENTROPY_CUT_VALUE( XX, YY, SILENT=FALSE, DO_PLOT=TRUE )
     # VERIFY_PIVOT( PIVOT, XX, debug=FALSE )
     # A = table( cbind( XX, YY ))
-    # for ( i in 1:10 )  print( paste( i, rownames(A)[i], CONCAT(XX[XX<as.numeric(rownames(A)[i])]), "||", CONCAT(A[1:i,1]), "||", CONCAT(A[1:i,2]), "||", GET_ENTROPY_XY_WRT( A[1:i,1], A[1:i,2], LOG=log10 )))
-    # ######################################################################################################
+    # for ( i in 1:10 )  
+    # print( paste( i, rownames(A)[i], 
+    #                   CONCAT(XX[XX<as.numeric(rownames(A)[i])]), "||", 
+    #                   CONCAT(A[1:i,1]), "||", CONCAT(A[1:i,2]), "||", 
+    #                   GET_ENTROPY_XY_WRT( A[1:i,1], A[1:i,2], LOG=log10 )))
+    # ##################################################################################################
 
 
-    # ######################################################################################################
-    XY = READ_C45_DATA( 'car' )
-    ORDERING = sample( rownames(XY), nrow(XY) )
-    XY = XY[ORDERING,]
+# ######################################################################################################
+TEST_ENABLED = TRUE
+
+if ( TEST_ENABLED ) {
+    # ##################################################################################################
+    sink( 'output_decision_trees.out', split=TRUE )
+    opts = options( width=132 )
+    # ##################################################################################################
+
+    ORIGINAL_XY    = READ_C45_DATA( 'car' )
+    M              = nrow( ORIGINAL_XY )
+    TEST_SIZE      = as.integer(M * 0.3)
+    TRAIN_SIZE     = M - TEST_SIZE
+    ORDERING       = sample(  rownames(ORIGINAL_XY), M )
+    TRAIN_ORDERING = ORDERING[1:TRAIN_SIZE]
+    TEST_ORDERING  = ORDERING[ (TRAIN_SIZE+1):M]
+
+    XY = ORIGINAL_XY[TRAIN_ORDERING,]
     X  = SLICE_DATAFRAME(XY, c(1:6)) 
     Y  = SLICE_DATAFRAME(XY, 7)
-
     FORMULA = sprintf( "%s ~ .", colnames(Y) )
 
-    MODEL = DO_DECISION_TREE( XY, Y, FORMULA=FORMULA, DO_PRUNING=TRUE, minbucket=20 )
-    YP    = PREDICT_TREE( XY, Y[,1], as_probas=FALSE )
-    IMSE  = GET_TREE_IMSE( Y[,1], YP, total=FALSE )
-    CM    = GET_CONFUSION_MATRIX( Y[,1], YP )
-    PLOT_TREE( MODEL, IMSE, CM )
-    # ######################################################################################################
+    MODEL      = FIT_DECISION_TREE( XY, Y[,1], FORMULA=FORMULA, DO_PRUNING=TRUE, minbucket=20 )
+    MODEL_EVAL = APPLY_DECISION_TREE_MODEL( MODEL, XY, Y=Y[,1] )
+
+    XY = ORIGINAL_XY[TEST_ORDERING,]
+    X  = SLICE_DATAFRAME(XY, c(1:6)) 
+    Y  = SLICE_DATAFRAME(XY, 7)
+    MODEL_EVAL = APPLY_DECISION_TREE_MODEL( MODEL, XY, Y=Y[,1] )
 
 
+    # require(party)
+    #  
+    # (ct = ctree(FORMULA, data = XY ))
+    # plot(ct, main="Conditional Inference Tree")
+    #  
+    # #Table of prediction errors
+    # table(predict(ct), Y[,1])
+    #  
+    # # Estimated class probabilities
+    # tr.pred = predict(ct, newdata=XY, type="prob" )
+    # 
 
-# require(party)
-#  
-# (ct = ctree(FORMULA, data = XY ))
-# plot(ct, main="Conditional Inference Tree")
-#  
-# #Table of prediction errors
-# table(predict(ct), Y[,1])
-#  
-# # Estimated class probabilities
-# tr.pred = predict(ct, newdata=XY, type="prob" )
-# 
-options( opts )
+
+    # ##################################################################################################
+    options( opts )
+    sink()
+    # ##################################################################################################
+}
 # ######################################################################################################
 
 
