@@ -34,11 +34,11 @@ message("")
 # library(partykit)				# Convert rpart object to BinaryTree
 # ######################################################################################################
 library(rpart)				    # Popular decision tree algorithm
-library(rattle)					# Fancy tree plot
 library(rpart.plot)				# Enhanced tree plots
-library(RColorBrewer)				# Color selection for fancy tree plot
-library(party)					# Alternative decision tree algorithm
-library(caret)					# Just a data source for this script # but probably one of the best R packages ever. 
+#library(rattle)					# Fancy tree plot
+#library(RColorBrewer)				# Color selection for fancy tree plot
+#library(party)					# Alternative decision tree algorithm
+#library(caret)					# Just a data source for this script # but probably one of the best R packages ever. 
 # ######################################################################################################
 
 
@@ -210,22 +210,31 @@ DO_DECISION_TREE = function( XY, Y, FORMULA="", DO_PRUNING=TRUE, Q=0.1, ... ) {
 # ######################################################################################################
 # http://blog.revolutionanalytics.com/2013/06/plotting-classification-and-regression-trees-with-plotrpart.html
 # ######################################################################################################
-PLOT_TREE = function( MODEL, INCREMENTAL_MSE, CONFUSION_MATRIX ) {
+PLOT_TREE = function( MODEL, INCREMENTAL_MSE, CONFUSION_MATRIX, LABEL="TRAIN" ) {
     def.par <- par(no.readonly = TRUE) # save default, for resetting...
 
+    LABEL = sprintf("%s SET [%s SAMPLES]", LABEL, GET_SIZE(INCREMENTAL_MSE))
+
     nf <- layout(matrix(c(1,1,1,1,1,1,2,3,4), 3, 3, byrow = TRUE), respect = TRUE)
-    prp(MODEL, type=4, nn=TRUE, cex=0.7, extra=2, under=TRUE, branch=1, main="RECURSIVE PARTITIONING TREE")#, varlen=6)# Shorten variable names
+
+    # PLOT 1
+    prp(MODEL, type=4, nn=TRUE, cex=0.7, extra=2, under=TRUE, branch=1, 
+                    main=paste("RECURSIVE PARTITIONING TREE", LABEL))#, varlen=6)# Shorten variable names
+
+    # PLOT 2
     plot( INCREMENTAL_MSE, t='l', main="INCREMENTAL MSE" )
 
     ACM = addmargins(CONFUSION_MATRIX)
     ACM = apply( ACM, 2, function(x) x/x[length(x)] )
     ACM = ACM[1:nrow(CONFUSION_MATRIX),1:ncol(CONFUSION_MATRIX)]
 
+    # PLOT 3 and PLOT 4
     colors = c("blue", "green", "brown", "red", "gray", "white", 20:40 )
     plot( CONFUSION_MATRIX, main="CONFUSION MATRIX (CM)", col=colors[1:max(ncol(CONFUSION_MATRIX),nrow(CONFUSION_MATRIX))] )
-    plot( as.table(ACM), main="CLASS FREQUENCIES", col=colors[1:max(ncol(CONFUSION_MATRIX),nrow(CONFUSION_MATRIX))] )
+    plot( as.table(ACM),    main="CLASS FREQUENCIES",     col=colors[1:max(ncol(CONFUSION_MATRIX),nrow(CONFUSION_MATRIX))] )
 
     par( def.par )
+
     return ( ACM )
 }
 # ######################################################################################################
@@ -277,16 +286,16 @@ FIT_DECISION_TREE = function( XY, Y, FORMULA=FORMULA, DO_PRUNING=TRUE, Q=0.1, mi
 
 
 # ######################################################################################################
-APPLY_DECISION_TREE_MODEL = function( MODEL, XY, Y=c() ) {
+APPLY_DECISION_TREE_MODEL = function( MODEL, XY, Y=c(), LABEL="TRAIN" ) {
     YP   = PREDICT_TREE( MODEL, XY, as_probas=FALSE )
     if( GET_SIZE(Y) != 0 ) {
         IMSE  = GET_TREE_IMSE( Y, YP, total=FALSE )
         CM    = GET_CONFUSION_MATRIX( Y, YP )
-        PLOT_TREE( MODEL, IMSE, CM )
+        PLOT_TREE( MODEL, IMSE, CM, LABEL )
     } else {
         IMSE  = rep(NA, GET_SIZE(YP) )
         CM    = table( YP )
-        PLOT_TREE( MODEL, IMSE, CM )
+        PLOT_TREE( MODEL, IMSE, CM, LABEL )
     }
     RETVALS = list( MODEL=MODEL, IMSE=IMSE, CM=CM )
     return ( RETVALS )
@@ -332,18 +341,34 @@ if ( TEST_ENABLED ) {
     TRAIN_ORDERING = ORDERING[1:TRAIN_SIZE]
     TEST_ORDERING  = ORDERING[ (TRAIN_SIZE+1):M]
 
-    XY = ORIGINAL_XY[TRAIN_ORDERING,]
-    X  = SLICE_DATAFRAME(XY, c(1:6)) 
-    Y  = SLICE_DATAFRAME(XY, 7)
-    FORMULA = sprintf( "%s ~ .", colnames(Y) )
+    PDF_FILE      = "plot_decision_trees_summary.pdf" 
 
-    MODEL      = FIT_DECISION_TREE( XY, Y[,1], FORMULA=FORMULA, DO_PRUNING=TRUE, minbucket=20 )
-    MODEL_EVAL = APPLY_DECISION_TREE_MODEL( MODEL, XY, Y=Y[,1] )
+    # ##################################################################################################
+    # TRAIN
+    # ##################################################################################################
+        XY = ORIGINAL_XY[TRAIN_ORDERING,]
+        X  = SLICE_DATAFRAME(XY, c(1:6)) 
+        Y  = SLICE_DATAFRAME(XY, 7)
+        FORMULA = sprintf( "%s ~ .", colnames(Y) )
 
-    XY = ORIGINAL_XY[TEST_ORDERING,]
-    X  = SLICE_DATAFRAME(XY, c(1:6)) 
-    Y  = SLICE_DATAFRAME(XY, 7)
-    MODEL_EVAL = APPLY_DECISION_TREE_MODEL( MODEL, XY, Y=Y[,1] )
+        MODEL      = FIT_DECISION_TREE( XY, Y[,1], FORMULA=FORMULA, DO_PRUNING=TRUE, minbucket=20 )
+        TRAIN_MODEL_EVAL = APPLY_DECISION_TREE_MODEL( MODEL, XY, Y=Y[,1], LABEL="TRAIN" )
+        dev.copy( pdf, PDF_FILE, 11, 8 )
+
+    # ##################################################################################################
+    # TEST
+    # ##################################################################################################
+        XY = ORIGINAL_XY[TEST_ORDERING,]
+        X  = SLICE_DATAFRAME(XY, c(1:6)) 
+        Y  = SLICE_DATAFRAME(XY, 7)
+    
+        TEST_MODEL_EVAL  = APPLY_DECISION_TREE_MODEL( MODEL, XY, Y=Y[,1], LABEL="TEST" )
+        dev.copy( pdf ) # continues writing to the still opened pdf device
+
+    dev.off() # screen
+    dev.off() # pdf1
+    dev.off() # pdf2
+    print( paste( 'PDF file', PDF_FILE, 'was generated summarizing an assessment of the generated decision tree' ))
 
 
     # require(party)
