@@ -35,8 +35,9 @@ message("")
 # ######################################################################################################
 library(rpart)				    # Popular decision tree algorithm
 library(rpart.plot)				# Enhanced tree plots
-#library(rattle)					# Fancy tree plot
-#library(RColorBrewer)				# Color selection for fancy tree plot
+library(randomForest)           # randomForest for variable importance and error
+#library(rattle)				# Fancy tree plot
+#library(RColorBrewer)			# Color selection for fancy tree plot
 #library(party)					# Alternative decision tree algorithm
 #library(caret)					# Just a data source for this script # but probably one of the best R packages ever. 
 # ######################################################################################################
@@ -171,8 +172,11 @@ SCORE = function( Y, YP, i, YLEVELS_SCORING=list( 'unacc'=0, 'acc' =1, 'good'=2,
     MSE = (s_yp - s_y )^2
     if ( debug ) 
         print( sprintf( "%5s [%12s vs. %12s]  ==>  [%3s]    IMSE=%.4g", i, y, yp, s_yp - s_y, MSE/i  ) )
-    else if ( !silent & abs(s_yp - s_y) != 0 )
-            print( sprintf( "%5s [%12s vs. %12s]  ==>  [%3s]    IMSE=%.4g", i, y, yp, s_yp - s_y, MSE/i  ) )
+    else if ( !silent ) { 
+                if ( debug ) print( paste( y, yp, s_yp, s_y ) )
+                if ( abs(s_yp - s_y) != 0 )
+                    print( sprintf( "%5s [%12s vs. %12s]  ==>  [%3s]    IMSE=%.4g", i, y, yp, s_yp - s_y, MSE/i  ) )
+            }
     return ( MSE )
 }
 # ######################################################################################################
@@ -218,8 +222,12 @@ PLOT_TREE = function( MODEL, INCREMENTAL_MSE, CONFUSION_MATRIX, LABEL="TRAIN" ) 
     nf <- layout(matrix(c(1,1,1,1,1,1,2,3,4), 3, 3, byrow = TRUE), respect = TRUE)
 
     # PLOT 1
-    prp(MODEL, type=4, nn=TRUE, cex=0.7, extra=2, under=TRUE, branch=1, 
-                    main=paste("RECURSIVE PARTITIONING TREE", LABEL))#, varlen=6)# Shorten variable names
+    if ( length(grep( "rpart", class(MODEL))) ) {
+        prp(MODEL, type=4, nn=TRUE, cex=0.7, extra=2, under=TRUE, branch=1, 
+                        main=paste("RECURSIVE PARTITIONING TREE", LABEL))#, varlen=6)# Shorten variable names
+    } else {
+        plot( MODEL )
+    }
 
     # PLOT 2
     plot( INCREMENTAL_MSE, t='l', main="INCREMENTAL MSE" )
@@ -243,7 +251,6 @@ PLOT_TREE = function( MODEL, INCREMENTAL_MSE, CONFUSION_MATRIX, LABEL="TRAIN" ) 
 # ######################################################################################################
 PREDICT_TREE = function( MODEL, XY, as_probas=FALSE ) {
     YP_PRED   = predict(MODEL, XY)
-    print( YP_PRED )
     if ( !as_probas ) {
         YP_MATRIX = matrix(YP_PRED, nrow(XY))
         YP        = apply( YP_MATRIX, 1, function( x ) colnames(YP_PRED)[which(x == max(x))] )
@@ -304,6 +311,47 @@ APPLY_DECISION_TREE_MODEL = function( MODEL, XY, Y=c(), LABEL="TRAIN" ) {
 
 
 # ######################################################################################################
+# Random Forest prediction  # http://www.statmethods.net/advstats/cart.html
+# ######################################################################################################
+GET_RANDOM_FOREST_MODEL = function( FORMULA, XY, ... ) {
+    RF_MODEL = randomForest(FORMULA, data=T_XY, ... )
+    IMP      = importance(RF_MODEL)                             # importance of each predictor 
+    cat( HEADER )
+    print(FORMULA)
+    print(RF_MODEL)
+    cat( HEADER )
+    print(IMP)
+    cat( HEADER )
+    return( RF_MODEL )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+# Random Forest prediction  # http://www.statmethods.net/advstats/cart.html
+# ######################################################################################################
+APPLY_RANDOM_FOREST = function( MODEL, R_XY, R_Y=c(), MODE="TRAIN" ) {
+    YP       = predict( RF_MODEL, R_XY )
+
+    if ( GET_SIZE(R_Y)!= 0 ) {
+        IMSE     = GET_TREE_IMSE( R_Y, YP, total=FALSE )
+        CM       = GET_CONFUSION_MATRIX( R_Y, YP )
+    } else {
+        IMSE     = rep(NA,GET_SIZE(YP))
+        CM       = table(YP)
+    }
+
+    PLOT_TREE( MODEL, IMSE, CM, "RANDOM FOREST MODEL" )
+    RETVALS = list( MODEL=RF_MODEL, YP=YP, CM=CM, IMSE=IMSE )
+
+    return ( RETVALS )
+}
+# ######################################################################################################
+
+
+
+
+# ######################################################################################################
 # ######################################################################################################
 # ######################################################################################################
 # ######################################################################################################
@@ -329,6 +377,8 @@ TEST_ENABLED = TRUE
 
 if ( TEST_ENABLED ) {
     # ##################################################################################################
+    if ( TRUE ) graphics.off()
+    sink()
     sink( 'output_decision_trees.out', split=TRUE )
     opts = options( width=132 )
     # ##################################################################################################
@@ -346,42 +396,56 @@ if ( TEST_ENABLED ) {
     # ##################################################################################################
     # TRAIN
     # ##################################################################################################
-        XY = ORIGINAL_XY[TRAIN_ORDERING,]
-        X  = SLICE_DATAFRAME(XY, c(1:6)) 
-        Y  = SLICE_DATAFRAME(XY, 7)
-        FORMULA = sprintf( "%s ~ .", colnames(Y) )
+        T_XY = ORIGINAL_XY[TRAIN_ORDERING,]
+        T_X  = SLICE_DATAFRAME(T_XY, c(1:6)) 
+        T_Y  = SLICE_DATAFRAME(T_XY, 7)
+        FORMULA = sprintf( "%s ~ .", colnames(T_Y) )
 
-        MODEL      = FIT_DECISION_TREE( XY, Y[,1], FORMULA=FORMULA, DO_PRUNING=TRUE, minbucket=20 )
-        TRAIN_MODEL_EVAL = APPLY_DECISION_TREE_MODEL( MODEL, XY, Y=Y[,1], LABEL="TRAIN" )
+        MODEL      = FIT_DECISION_TREE( T_XY, T_Y[,1], FORMULA=FORMULA, DO_PRUNING=TRUE, minbucket=20 )
+        TRAIN_MODEL_EVAL = APPLY_DECISION_TREE_MODEL( MODEL, T_XY, Y=T_Y[,1], LABEL="TRAIN" )
         dev.copy( pdf, PDF_FILE, 11, 8 )
+    # ##################################################################################################
 
     # ##################################################################################################
     # TEST
     # ##################################################################################################
-        XY = ORIGINAL_XY[TEST_ORDERING,]
-        X  = SLICE_DATAFRAME(XY, c(1:6)) 
-        Y  = SLICE_DATAFRAME(XY, 7)
+        P_XY = ORIGINAL_XY[TEST_ORDERING,]
+        P_X  = SLICE_DATAFRAME(P_XY, c(1:6)) 
+        P_Y  = SLICE_DATAFRAME(P_XY, 7)
     
-        TEST_MODEL_EVAL  = APPLY_DECISION_TREE_MODEL( MODEL, XY, Y=Y[,1], LABEL="TEST" )
+        TEST_MODEL_EVAL  = APPLY_DECISION_TREE_MODEL( MODEL, P_XY, Y=P_Y[,1], LABEL="TEST" )
         dev.copy( pdf ) # continues writing to the still opened pdf device
+    # ##################################################################################################
 
+    # ##################################################################################################
     dev.off() # screen
     dev.off() # pdf1
     dev.off() # pdf2
     print( paste( 'PDF file', PDF_FILE, 'was generated summarizing an assessment of the generated decision tree' ))
+    # ##################################################################################################
 
+    # ##################################################################################################
+    # RANDOM FOREST PREDICTION
+    # ##################################################################################################
+        PDF_FILE      = "plot_decision_trees_random_forest_summary.pdf" 
+        pdf( PDF_FILE, 11, 8 )
 
-    # require(party)
-    #  
-    # (ct = ctree(FORMULA, data = XY ))
-    # plot(ct, main="Conditional Inference Tree")
-    #  
-    # #Table of prediction errors
-    # table(predict(ct), Y[,1])
-    #  
-    # # Estimated class probabilities
-    # tr.pred = predict(ct, newdata=XY, type="prob" )
-    # 
+        RF_MODEL = GET_RANDOM_FOREST_MODEL( as.formula(FORMULA), T_XY, imp=1, 
+                                           mtry0=2, 
+                                           ntree=1023, 
+                                           # nodesize=20, 
+                                           maxnodes=127 )
+
+        RANDOM_FOREST_RETVALS = APPLY_RANDOM_FOREST( RF_MODEL, T_XY, T_Y[,1], MODE="TRAIN" )
+        RF_CM    = RANDOM_FOREST_RETVALS$CM
+
+        RANDOM_FOREST_RETVALS = APPLY_RANDOM_FOREST( RF_MODEL, P_XY, P_Y[,1], MODE="TEST" )
+        RF_CM    = RANDOM_FOREST_RETVALS$CM
+
+        dev.off()
+        print( paste( 'PDF file', PDF_FILE, 'was generated summarizing an assessment of the random-forest selected tree' ))
+
+    # ##################################################################################################
 
 
     # ##################################################################################################
@@ -390,7 +454,6 @@ if ( TEST_ENABLED ) {
     # ##################################################################################################
 }
 # ######################################################################################################
-
 
 
 
