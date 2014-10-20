@@ -46,6 +46,7 @@ library(randomForest)           # randomForest for variable importance and error
 # ######################################################################################################
 source( 'utilities.R' )
 source( 'marginals.R' )
+source( 'datasets.R' )
 # ######################################################################################################
 
 
@@ -144,21 +145,6 @@ VERIFY_PIVOT = function( SELECTED_PIVOT, XX, debug=FALSE ) {
             cat( HEADER )
         }
     }
-}
-# ######################################################################################################
-
-
-# ######################################################################################################
-READ_C45_DATA = function( filename_stem ) {
-    t = read.csv( paste(filename_stem,"data",sep="."), header=FALSE, stringsAsFactors=TRUE )
-    h = read.csv2(paste(filename_stem,'c45-names', sep="."), sep=":")
-    h = rownames(h)[c(-2,-3)]
-    h = gsub("\\| ","", h )
-    h = gsub(" ","_", h )
-    h = c(h[2:length(h)], h[1])
-    colnames(t) = h
-    print( summary(t))
-    return ( t )
 }
 # ######################################################################################################
 

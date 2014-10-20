@@ -584,3 +584,21 @@ GET_CLUSTERED_X = function( M=100, NFEATURES=2, NCLUSTERS=5, MU_X=seq(0,NCLUSTER
     return ( X )
 }
 # #################################################################################################
+
+
+# #################################################################################################
+READ_C45_DATA = function( filename_stem ) {
+    t = read.csv( paste(filename_stem,"data",sep="."), header=FALSE, stringsAsFactors=TRUE )
+    h = read.csv2(paste(filename_stem,'c45-names', sep="."), sep=":")
+    h = rownames(h)[c(-2,-3)]
+    h = gsub("\\| ","", h )
+    h = gsub(" ","_", h )
+    h = c(h[2:length(h)], h[1])
+    colnames(t) = h
+    print( summary(t))
+    return ( t )
+}
+# ######################################################################################################
+
+
+

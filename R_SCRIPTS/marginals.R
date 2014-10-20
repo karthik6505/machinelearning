@@ -32,6 +32,7 @@ message("")
 # ######################################################################################################
 source( 'utilities.R' )
 source( 'aggregate.R' )
+source( 'datasets.R' )
 # ######################################################################################################
 
 
@@ -139,6 +140,7 @@ GET_ENTROPY_XY_WRT = function( X=matrix(), Y=matrix(), x=0, y=0, LOG=log2, debug
 # TODO: with lookahead
 # ######################################################################################################
 WHICH_NEXT = function( HVALS=c(), debug=FALSE ) {
+    print ( HVALS )
     WHICH = which( HVALS == min( HVALS, na.rm=TRUE ))
     if ( length(WHICH) > 0 ) WHICH=WHICH[1]
     if ( debug ) {
@@ -158,7 +160,12 @@ GET_ENTROPY_VECTOR_FOR = function( X, Y ) {
     for ( i in 1:NC )
         HVALS[i] = GET_ENTROPY_XY_WRT( X[,i], Y )
 
-    MIN = which( HVALS == min(HVALS ) )
+    MIN = which( HVALS == min(HVALS) )
+    if ( length(MIN) == 0 ) {
+        print( "WARNING: HVALS has missing values, " )
+        print( HVALS )
+        print ( MIN )
+    }
     ATTRIBUTE_NAMES = colnames(X)[MIN]
     print( sprintf( "%20s %4s %8.4f", colnames(X), 1:NC, HVALS ) )
     cat(HEADER)
@@ -176,11 +183,18 @@ GET_ENTROPY_VECTOR_FOR = function( X, Y ) {
 # ######################################################################################################
 APPLY_CONDITIONAL_FUNCTION = function( X, Y, WRT_COLUMN=1, BEING_EQUAL_TO="", APPLY_FUNCTION=GET_ENTROPY_VECTOR_FOR, debug=FALSE ) {
     LN = which( str_detect(levels(X[,WRT_COLUMN]), BEING_EQUAL_TO ))
+    if ( length(LN) == 0 ) print( LN )
+
     FACTOR_NAME = levels(X[,WRT_COLUMN])[LN] 
+    if ( length(FACTOR_NAME) == 0 ) print( FACTOR_NAME )
+
     CONDITIONED_SELECTION = X[,WRT_COLUMN]==FACTOR_NAME
+    if ( length(CONDITIONED_SELECTION) == 0 ) print( CONDITIONED_SELECTION )
+
+    if ( debug ) print( CONDITIONED_SELECTION  )
     CONDITIONED_X = X[ CONDITIONED_SELECTION, ]
     CONDITIONED_Y = Y[ CONDITIONED_SELECTION, ]
-    print( cbind( CONDITIONED_X, CONDITIONED_Y ) )
+    if ( debug ) print( cbind( CONDITIONED_X, CONDITIONED_Y ) )
     cat(HEADER)
     FVALS = APPLY_FUNCTION( CONDITIONED_X, CONDITIONED_Y )
     return ( FVALS )
@@ -268,13 +282,15 @@ WRITE_RULE_FOR = function( ATTRIBUTE_EXPRESSION, TARGET_FACTOR_LEVEL, Frx, APPRO
 
     RULE = sprintf( "%-80s  %20s", LHS, RHS )
 
-    RULES[[length(RULES)+1]] <<- RULE
+    SHORT_RULE = sprintf( "%s %s", LHS, names(YLABEL) )
 
-    NEWLINE(1)
+    PARSED_RULES[[length(PARSED_RULES)+1]] <<- list( EXPRESSION=ATTRIBUTE_EXPRESSION, N=length(PARSED_RULES)+1, FREQUENCY=FREQUENCY, YNAME=GET_YCLASSNAME(), YVAL=names(YLABEL), LHS=LHS, RHS=RHS, RULE=RULE )  
+
+    RULES[[ATTRIBUTE_EXPRESSION]] <<- SHORT_RULE
+
     cat(HEADER)
     print( RULE )
     cat(HEADER)
-    NEWLINE(3)
     return ( RULE )
 }
 # ######################################################################################################
@@ -282,7 +298,7 @@ WRITE_RULE_FOR = function( ATTRIBUTE_EXPRESSION, TARGET_FACTOR_LEVEL, Frx, APPRO
 
 # ######################################################################################################
 GET_YCLASSNAME = function() {
-    return ( "PlayGolf" )
+    return ( YCLASSNAME )
 }
 # ######################################################################################################
 
@@ -318,17 +334,13 @@ DO_RULE_WRITING = function( ENTROPY, ATTR_EXPRESSION, FACTOR_LEVEL, SUBTREE_SIZE
             RULE_RETVALS = WRITE_RULE_FOR( ATTR_EXPRESSION, FACTOR_LEVEL, Frx, APPROX=TRUE )
             RULE_HAS_COMPLETE_COVERAGE = TRUE
         }
-
-    if ( RULE_HAS_COMPLETE_COVERAGE )
-        DO_UPDATE (ATTR_EXPRESSION)
-
     return ( RULE_HAS_COMPLETE_COVERAGE )
 }
 # ######################################################################################################
 
 
 # ######################################################################################################
-WRITE_RULE = function( WHICH_COLNUM=1, x=0, y=0, WRITE_THRESHOLD = 0.1, MINNODESIZE=4, debug=FALSE ) {
+WRITE_RULE = function( WHICH_COLNUM=1, x=0, y=0, WRITE_THRESHOLD = RULE_ERROR_RATE, MINNODESIZE=4, debug=FALSE ) {
 
     if ( nrow(X) == 0 ) {
         print( "DONE. NO MORE ROWS TO SCAN" )
@@ -344,7 +356,7 @@ WRITE_RULE = function( WHICH_COLNUM=1, x=0, y=0, WRITE_THRESHOLD = 0.1, MINNODES
     M = nrow(Frx)-1
     N = ncol(Frx)-1
     for (i in 1:M) {
-        NEWLINE(10)
+        NEWLINE(1)
         ATTRIBUTE_NAMES  = c()
         ATTRIBUTE_VALUES = c()
 
@@ -358,9 +370,15 @@ WRITE_RULE = function( WHICH_COLNUM=1, x=0, y=0, WRITE_THRESHOLD = 0.1, MINNODES
         ATTRIBUTE_VALUES   = append( ATTRIBUTE_VALUES, FACTOR_LEVEL )
         ATTR_EXPRESSION    = GET_ATTRIBUTE_EXPRESSION( ATTRIBUTE_NAMES, ATTRIBUTE_VALUES )
 
-        COVERAGE_COMPLETED = DO_RULE_WRITING( ENTROPY, ATTR_EXPRESSION, FACTOR_LEVEL, SUBTREE_SIZE, Frx )
+        RULE_HAS_COMPLETE_COVERAGE = DO_RULE_WRITING( ENTROPY, ATTR_EXPRESSION, FACTOR_LEVEL, SUBTREE_SIZE, Frx )
+        if ( RULE_HAS_COMPLETE_COVERAGE ) {
+            RULE_ACTIVATED_ROWS = GET_RULE_SCOPE(ATTR_EXPRESSION)
+            MAPPING[RULE_ACTIVATED_ROWS,ncol(MAPPING)] <<- RULES[[ATTR_EXPRESSION]]
+            WHICH_ROWS_TO_KEEP  = WHICH_ROWS_TO_KEEP( RULE_ACTIVATED_ROWS=RULE_ACTIVATED_ROWS )
+            DO_UPDATE(WHICH_ROWS_TO_KEEP)
+        }
 
-        if ( !COVERAGE_COMPLETED ) {
+        if ( !RULE_HAS_COMPLETE_COVERAGE ) {
             SO_RETVALS = APPLY_CONDITIONAL_FUNCTION( X, Y, WRT_COLUMN=WHICH_COLNUM, 
                                                              BEING_EQUAL_TO=FACTOR_LEVEL, 
                                                              APPLY_FUNCTION=GET_ENTROPY_VECTOR_FOR )
@@ -377,7 +395,7 @@ WRITE_RULE = function( WHICH_COLNUM=1, x=0, y=0, WRITE_THRESHOLD = 0.1, MINNODES
             SO_FACTOR_ENTROPIES = GET_FACTOR_PURITY( SO_FREQUENCIES )
 
             for ( i in 1:length(SO_FACTOR_ENTROPIES)) {
-                if ( COVERAGE_COMPLETED ) {
+                if ( RULE_HAS_COMPLETE_COVERAGE ) {
                     # THIS STUFF GOES ABOVE UNDER IF !COVERAGE_COMPLETED
                     # TODO: FIX ATTRIBUTE EXPRESSION HERE TO EXPAND MATCHING RECURSION VIA EXPLICIT ITERATION
                     # TODO: THIS NEEDS TO BE DONE ABOVE ( WHICH ONLY ITERATES ON 2nd order and all of its factors
@@ -385,60 +403,108 @@ WRITE_RULE = function( WHICH_COLNUM=1, x=0, y=0, WRITE_THRESHOLD = 0.1, MINNODES
                     # TODO: CONSIDER: BY RANDOMLY SELECTING WHICH ATTRIBUTES TO EXAMINE AS OPPOSED TO ALL --> RANDOM SUBTREE (TO REDUCE TIME, 
                     NEWLINE(2)
                 } else {
-                    NEWLINE(4)
+                    NEWLINE(1)
                 }
                 ENTROPY       = SO_FACTOR_ENTROPIES[i]
                 FACTOR_LEVEL  = names(SO_FACTOR_ENTROPIES)[i]
                 SUBTREE_SIZE  = SO_FREQUENCIES[FACTOR_LEVEL, 'Sum']
-                ATTR_EXPRESSION  = GET_ATTRIBUTE_EXPRESSION( append( ATTRIBUTE_NAMES,  colnames(X)[SO_IG_ATTRIBUTE] ), 
-                                                             append( ATTRIBUTE_VALUES, FACTOR_LEVEL ))
-                COVERAGE_COMPLETED = DO_RULE_WRITING( ENTROPY, ATTR_EXPRESSION, FACTOR_LEVEL, SUBTREE_SIZE, SO_FREQUENCIES )
+                ATTRIBUTE_NAMES  = PUSH( ATTRIBUTE_NAMES,  colnames(X)[SO_IG_ATTRIBUTE] )
+                ATTRIBUTE_VALUES = PUSH( ATTRIBUTE_VALUES, FACTOR_LEVEL )
+                    ATTR_EXPRESSION  = GET_ATTRIBUTE_EXPRESSION( ATTRIBUTE_NAMES, ATTRIBUTE_VALUES )
+                    RULE_HAS_COMPLETE_COVERAGE = DO_RULE_WRITING( ENTROPY, ATTR_EXPRESSION, FACTOR_LEVEL, SUBTREE_SIZE, SO_FREQUENCIES )
+                    if ( RULE_HAS_COMPLETE_COVERAGE ) { 
+                        RULE_ACTIVATED_ROWS = GET_RULE_SCOPE(ATTR_EXPRESSION)
+                        MAPPING[RULE_ACTIVATED_ROWS,ncol(MAPPING)] <<- RULES[[ATTR_EXPRESSION]]
+                        WHICH_ROWS_TO_KEEP  = WHICH_ROWS_TO_KEEP( RULE_ACTIVATED_ROWS=RULE_ACTIVATED_ROWS )
+                        DO_UPDATE(WHICH_ROWS_TO_KEEP)
+                    }
+                ATTRIBUTE_NAMES  = POP( ATTRIBUTE_NAMES  )$QUEUE
+                ATTRIBUTE_VALUES = POP( ATTRIBUTE_VALUES )$QUEUE
             }
         }
     }
-    NEWLINE(5)
+    NEWLINE(1)
 }
 # ######################################################################################################
 
 
 # ######################################################################################################
-DO_UPDATE = function( ATTR_EXPRESSION ) {
-    if ( nrow(X) == 0 ) return()
+GET_RULE_SCOPE = function( ATTR_EXPRESSION, debug=FALSE ) {
+    RULE_ACTIVATED_ROWS = c() 
+    if ( nrow(X) == 0 ) return(RULE_ACTIVATED_ROWS)
 
-    rowsX = eval( parse( text=sprintf("rownames(X[(%s),])",ATTR_EXPRESSION) ) )
-    if ( length(rowsX) == 0 ) return()
-    if ( length(rowsX) != 0 ) rowsX = sapply( rowsX, as.integer )
-    MAPPING[Y[rowsX,2]] <<- ATTR_EXPRESSION
+    print( ATTR_EXPRESSION )
+    RULE_ACTIVATED_ROWS = eval( parse( text=sprintf("rownames(X[(%s),])",ATTR_EXPRESSION) ) )
+    if ( length(RULE_ACTIVATED_ROWS) == 0 ) return(RULE_ACTIVATED_ROWS)
 
     cat(HEADER)
         print( ATTR_EXPRESSION )
-        print( sprintf( "X, Y UPDATED [nrow(X)=%s] DROPPING %s ROWS: %s", nrow(X), length(rowsX), CONCAT(rowsX)))
+        print( sprintf( "X, Y UPDATED [nrow(X)=%s] DROPPING %s ROWS: %s", nrow(X), length(RULE_ACTIVATED_ROWS), CONCAT(RULE_ACTIVATED_ROWS)))
     cat(HEADER)
 
-    ROWSX = sapply( rownames(X), as.integer )
-    which_rows = setdiff( ROWSX, rowsX )
-    which_rows = rownames(X)[which_rows]
+    RULE_ACTIVATED_ROWS = sapply( RULE_ACTIVATED_ROWS, as.character)
 
-    XX = X[which_rows,]
-    YY = Y[which_rows,]
+    print( summary( MAPPING[RULE_ACTIVATED_ROWS,] ) )
+
+    return( RULE_ACTIVATED_ROWS )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+WHICH_ROWS_TO_KEEP = function( RULE_ACTIVATED_ROWS=c(), ATTR_EXPRESSION="", debug=FALSE ) {
+    CURRENT_ROWNAMES    = sapply( rownames(X),         as.character)
+
+    if ( length(RULE_ACTIVATED_ROWS) == 0 )
+        RULE_ACTIVATED_ROWS = GET_RULE_SCOPE( ATTR_EXPRESSION )
+
+    WHICH_ROWS1 = setdiff( CURRENT_ROWNAMES, RULE_ACTIVATED_ROWS )
+
+    WHICH_ROWS2 = CURRENT_ROWNAMES[WHICH_ROWS1]
+    if ( length(setdiff( WHICH_ROWS1, WHICH_ROWS2 ))!= 0 ) {
+        cat(HEADER)
+        print( paste( "S0", CONCAT(WHICH_ROWS1) ) )
+        cat(HEADER)
+        print( paste( "S1", CONCAT(WHICH_ROWS2) ) )
+        cat(HEADER)
+    }
+
+    return( WHICH_ROWS2 )
+}
+# ######################################################################################################
+
+    
+# ######################################################################################################
+DO_UPDATE = function( WHICH_ROWS_TO_KEEP, debug=FALSE ) {
+    XX = X[WHICH_ROWS_TO_KEEP,]
+    YY = Y[WHICH_ROWS_TO_KEEP,]
+
     X <<- XX
     Y <<- YY
+
     n = nrow(XX)
     if( n == 0 ) {
         print( "DONE. NO MORE ROWS" )
-        return()
+        return(TRUE)
     } else {
-        rownames(XX) = 1:n
-        rownames(YY) = 1:n
+        W = complete.cases(XX)
+        XX = XX[W,]
+        YY = YY[W,]
         X <<- XX
         Y <<- YY
     }
 
-    print( summary( cbind(X,Y)) )
-    cat( HEADER )
-    print( cbind(X,Y) )
-    cat(HEADER)
-    NEWLINE(5)
+    print( paste( 'CURRENTLY, MISSING RULE COVERAGE FOR', GET_SIZE(X), 'SAMPLES OUT OF', GET_SIZE(MAPPING) ) )
+
+    if ( debug ) {
+        cat( HEADER )
+        print( summary( cbind(X,Y)) )
+        cat( HEADER )
+        print( cbind(XX,YY) )
+        cat(HEADER)
+        NEWLINE(1)
+    }
+    return(FALSE)
 }
 # ######################################################################################################
 
@@ -446,16 +512,18 @@ DO_UPDATE = function( ATTR_EXPRESSION ) {
 # ######################################################################################################
 TERMINATE = function( Q ) {
     END = FALSE
-    if ( nrow(X) == 0 ) END = TRUE
-    if ( all(MAPPING != "" )) END = TRUE
-    if ( length(Q) == 0 ) END = TRUE
+    if ( nrow(X) == 0 )       END = TRUE
+    if ( all(MAPPING != 0 ))  END = TRUE
+    if ( length(Q) == 0 )     END = TRUE
     return ( END )
 }
 # ######################################################################################################
 
 
 # ######################################################################################################
-DO_TRIVIAL_ID3 = function( X, Y, WRITE_THRESHOLD=0.1 ) {
+# ACTUALLY IS NOT A FORMAL DECISION TREE NOT ID3, IN DEVELOPMENT
+# ######################################################################################################
+DO_TRIVIAL_ID3 = function( X, Y, WRITE_THRESHOLD=RULE_ERROR_RATE, debug=FALSE ) {
     cat(HEADER)
     print( summary( cbind(X, Y ) ) )
     cat(HEADER)
@@ -466,38 +534,203 @@ DO_TRIVIAL_ID3 = function( X, Y, WRITE_THRESHOLD=0.1 ) {
     Frx       = GET_MARGINALS_WRT( X=X, Y=Y )
 
     REMAINING_QUEUE = ENTROPIES[,]
-    ATTR_COLNUM = WHICH_NEXT( REMAINING_QUEUE )
     
+    ITER = 0
     while( !TERMINATE(REMAINING_QUEUE) ) {
-        WRITE_RULE( WHICH_COLNUM=ATTR_COLNUM, WRITE_THRESHOLD = 0.1 )
-        print( MAPPING )
+        ITER = ITER + 1
 
-        print( ATTR_COLNUM )
-        print( REMAINING_QUEUE )
-        REMAINING_QUEUE = REMAINING_QUEUE[-ATTR_COLNUM]
         ATTR_COLNUM = WHICH_NEXT( REMAINING_QUEUE )
 
+        NEWLINE(5)
+        print( sprintf( "ITERATION %3s, HANDLING ATTRIBUTE: %s", ITER, names(REMAINING_QUEUE)[ATTR_COLNUM] ) )
+        print( sprintf( "AT ITERATION %3s,    ROWS REMAINING = %s SUMMARIZED AS FOLLOWS:", ITER, GET_SIZE(MAPPING[MAPPING$MAPPING==0,]) ) )
+        print( summary(MAPPING[MAPPING$MAPPING==0,]) )
         cat(HEADER)
+
+        WRITE_RULE( WHICH_COLNUM=ATTR_COLNUM, WRITE_THRESHOLD = RULE_ERROR_RATE )
+
+        print( sprintf( "AFTER ITERATION %3s, ROWS REMAINING = %s SUMMARIZED AS FOLLOWS:", ITER, GET_SIZE(MAPPING[MAPPING$MAPPING==0,]) ) )
+        print( summary(MAPPING[MAPPING$MAPPING==0,]) )
         cat(HEADER)
-        NEWLINE(10)
+
+        REMAINING_QUEUE = REMAINING_QUEUE[-ATTR_COLNUM]
+
+        if ( debug ) { print( REMAINING_QUEUE ); print( MAPPING ) }
     }
-    print( RULES )
+
+    ITEMIZE_MAPPINGS()
+
+    SUMMARIZE_GENERATED_RULES()
 }
 # ######################################################################################################
 
 
 # ######################################################################################################
-    golf     = read.csv( 'golf.txt', sep="\t", header=TRUE, stringsAsFactors=TRUE )
-    X        = golf[,c(1,3,5,6)]
-    Y        = cbind( golf[7], as.factor(1:nrow(X)))
-    MAPPING  = VECTOR( nrow(X), initval="" )
-    RULES    = list()
-    DO_TRIVIAL_ID3( X, Y, WRITE_THRESHOLD=0.1 )
+ITEMIZE_MAPPINGS = function( ) {
+    cat( HEADER )
+    cat( HEADER )
+    print( MAPPING )
+    cat( HEADER )
+    cat( HEADER )
+    NEWLINE(5)
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+SUMMARIZE_GENERATED_RULES = function() {
+    cat( HEADER )
+    print( 'TRAINING MODEL GENERATED' )
+    cat( HEADER )
+    for ( RULE in PARSED_RULES ) {
+        print( RULE$LHS)
+        print( RULE$RHS)
+        cat(HEADER)
+    }
+    cat( HEADER )
+    cat( HEADER )
+    NEWLINE(5)
+}
+
+
+# ######################################################################################################
+PREDICT_USING_RULES = function( MAPPING ) {
+    print( 'PREDICTING' )
+    for ( RULE in PARSED_RULES ) {
+        ATTR_EXPRESSION = RULE$EXPRESSION
+        RULE_ACTIVATED_ROWS = GET_RULE_SCOPE( ATTR_EXPRESSION )
+        RULE_ACTIVATED_ROWS = names(RULE_ACTIVATED_ROWS)
+        MAPPING[RULE_ACTIVATED_ROWS,ncol(MAPPING)] = RULES[[ATTR_EXPRESSION]]
+        X = X[which(!(rownames(X) %in% RULE_ACTIVATED_ROWS)),]
+    }
+    cat(HEADER)
+    print( paste( 'MISSING RULE COVERAGE FOR', GET_SIZE(X), 'SAMPLES OUT OF', GET_SIZE(MAPPING) ) )
+    print( summary( X ) )
+    cat(HEADER)
+    return( MAPPING )
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+# ######################################################################################################
+# ######################################################################################################
+# ######################################################################################################
 # ######################################################################################################
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # ######################################################################################################
+# ######################################################################################################
+# ######################################################################################################
+# ######################################################################################################
+# ######################################################################################################
+# ######################################################################################################
+
+
+# ######################################################################################################
+TEST_ENABLED = TRUE
+# ######################################################################################################
+
+
+# ######################################################################################################
+if ( TEST_ENABLED ) {
+    sink('output.marginals.out', split=TRUE)
+    opts = options( width=160 )
+
+
+    # ##################################################################################################
+    golf        = read.csv( 'golf.txt', sep="\t", header=TRUE, stringsAsFactors=TRUE )
+    YCLASSNAME  = "PlayGolf"
+
+    RULES             = list()
+    PARSED_RULES      = list()
+    RULE_ERROR_RATE   = 0.05
+
+    X           = golf[,c(1,3,5,6)]
+    Y           = cbind( golf[7], as.factor(1:nrow(X)))
+    colnames(Y) = c(colnames(Y)[1], "ORDERING" )
+
+    MAPPING           = cbind( X, Y, VECTOR( nrow(X), initval="" ) )
+    colnames(MAPPING) = c(colnames(X), colnames(Y), "MAPPING")
+
+    DO_TRIVIAL_ID3( X, Y, WRITE_THRESHOLD=RULE_ERROR_RATE )
+    NEWLINE(20)
+    # ##################################################################################################
+
+
+    # ##################################################################################################
+    YCLASSNAME     = "CarEvaluation"
+    ORIGINAL_XY    = READ_C45_DATA( 'car' )
+    M              = nrow( ORIGINAL_XY )
+    ORDERING       = sample(  rownames(ORIGINAL_XY), M )
+
+    TEST_SIZE      = as.integer(M * 0.3)
+    TRAIN_SIZE     = M - TEST_SIZE
+
+    TRAIN_ORDERING = ORDERING[1:TRAIN_SIZE]
+
+    TEST_ORDERING  = ORDERING[ (TRAIN_SIZE+1):M]
+
+    RULES          = list()
+    PARSED_RULES   = list()
+    RULE_ERROR_RATE= 0.05
+
+    # ##################################################################################################
+    # TRAIN
+    # ##################################################################################################
+    XY         = ORIGINAL_XY[TRAIN_ORDERING,]
+
+        X              = SLICE_DATAFRAME(XY, c(1:6)) 
+        Y              = SLICE_DATAFRAME(XY, 7)
+        Y              = cbind( Y, TRAIN_ORDERING)
+        colnames(Y)    = c(colnames(Y)[1], "ORDERING" )
+
+        MAPPING        = cbind( X, Y, as.matrix(rep(0.0, nrow(X) )))
+        colnames(MAPPING) = c(colnames(X), colnames(Y), "MAPPING")
+
+        DO_TRIVIAL_ID3( X, Y, WRITE_THRESHOLD=RULE_ERROR_RATE )
+
+    # ##################################################################################################
+    # TEST
+    # ##################################################################################################
+    PREDICT = TRUE
+    if ( PREDICT ) {
+        XY         = ORIGINAL_XY[TEST_ORDERING,]
+        X              = SLICE_DATAFRAME(XY, c(1:6)) 
+        Y              = SLICE_DATAFRAME(XY, 7)
+        Y              = cbind( Y, TEST_ORDERING)
+        colnames(Y)    = c(colnames(Y)[1], "ORDERING" )
+
+        MAPPING        = cbind( X, Y, as.matrix(rep(0.0, nrow(X) )))
+        colnames(MAPPING) = c(colnames(X), colnames(Y), "MAPPING")
+
+        PRED_MAPPING   = PREDICT_USING_RULES( MAPPING )
+    }
+
+    SUMMARIZE_GENERATED_RULES()
+
+sink()
 options( opts )
+}
 # ######################################################################################################
+
