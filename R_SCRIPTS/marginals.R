@@ -33,6 +33,7 @@ message("")
 source( 'utilities.R' )
 source( 'aggregate.R' )
 source( 'datasets.R' )
+source( 'marginals_plot.R')
 # ######################################################################################################
 
 
@@ -261,7 +262,7 @@ GET_ATTRIBUTE_EXPRESSION = function( ATTR_NAMES, ATTR_VALS, ATTR_OPS=rep("==", l
 
 
 # ######################################################################################################
-WRITE_SPECIFICATION_FOR_RULE_FOR = function( ATTRIBUTE_EXPRESSION, TARGET_FACTOR_LEVEL, Frx, APPROX=FALSE ) {
+WRITE_SPECIFICATION_FOR_RULE_FOR = function( ATTRIBUTE_EXPRESSION, TARGET_FACTOR_LEVEL, Frx, APPROX=FALSE, ORDER=1 ) {
     M = nrow(Frx)-1
     N = ncol(Frx)-1
 
@@ -284,7 +285,18 @@ WRITE_SPECIFICATION_FOR_RULE_FOR = function( ATTRIBUTE_EXPRESSION, TARGET_FACTOR
 
     SHORT_RULE = sprintf( "%s %s", LHS, names(YLABEL) )
 
-    PARSED_RULES[[length(PARSED_RULES)+1]] <<- list( EXPRESSION=ATTRIBUTE_EXPRESSION, N=length(PARSED_RULES)+1, FREQUENCY=FREQUENCY, YNAME=GET_YCLASSNAME(), YVAL=names(YLABEL), LHS=LHS, RHS=RHS, RULE=RULE )  
+    PARSED_RULES[[length(PARSED_RULES)+1]] <<- list( EXPRESSION=ATTRIBUTE_EXPRESSION, 
+                                                     N=length(PARSED_RULES)+1, 
+                                                     FREQUENCY=FREQUENCY, 
+                                                     ACCURACY=ACCURACY,
+                                                     TARGET_FACTOR=TARGET_FACTOR_LEVEL,
+                                                     Frx=Frx,
+                                                     YNAME=GET_YCLASSNAME(), 
+                                                     YVAL=names(YLABEL), 
+                                                     ORDER=ORDER,
+                                                     LHS=LHS, 
+                                                     RHS=RHS, 
+                                                     RULE=RULE )  
 
     RULES[[ATTRIBUTE_EXPRESSION]] <<- SHORT_RULE
 
@@ -304,11 +316,14 @@ GET_YCLASSNAME = function() {
 
 
 # ######################################################################################################
-IS_LEAF_NODE = function( ENTROPY, ACCURACY, WRITE_THRESHOLD=RULE_ERROR_RATE ) {
+IS_LEAF_NODE = function( ENTROPY, ACCURACY, WRITE_THRESHOLD=RULE_ERROR_RATE, SUBTREE_SIZE, MIN_SUBTREE_SIZE=4 ) {
     val = FALSE
     if (ACCURACY/100 >= (1 - WRITE_THRESHOLD ))
         if ( ENTROPY <= 1*WRITE_THRESHOLD ) 
-            val = TRUE
+            if ( SUBTREE_SIZE >= MIN_SUBTREE_SIZE )
+                val = TRUE
+            else
+                print( sprintf('TERMINAL NODE BUT SUBTREE SIZE %s < %s', SUBTREE_SIZE, MIN_SUBTREE_SIZE ) )
     if ( val ) {
         print( "TERMINAL NODE" )
         cat( HEADER )
@@ -351,19 +366,19 @@ GET_FACTOR_ACCURACY = function( FACTOR_LEVEL, Frx, debug=FALSE ) {
 
 
 # ######################################################################################################
-DO_RULE_WRITING = function( ENTROPY, ATTR_EXPRESSION, FACTOR_LEVEL, SUBTREE_SIZE, Frx, M, N, ORDER ) {
+DO_RULE_WRITING = function( ENTROPY, ATTR_EXPRESSION, FACTOR_LEVEL, SUBTREE_SIZE, Frx, M, N, ORDER=1 ) {
     ACCURACY = GET_FACTOR_ACCURACY ( FACTOR_LEVEL, Frx ) 
 
     print( sprintf( "ENTROPY=%.3f, WRT=%32s, FACTOR=%6s TREESIZE=%3s ACCURACY=%.1f", 
                      ENTROPY, ATTR_EXPRESSION, FACTOR_LEVEL, SUBTREE_SIZE, ACCURACY ) )
 
     RULE_HAS_COMPLETE_COVERAGE = FALSE
-        if ( IS_LEAF_NODE( ENTROPY, ACCURACY, WRITE_THRESHOLD=RULE_ERROR_RATE ) ) {
-            RULE_RETVALS = WRITE_SPECIFICATION_FOR_RULE_FOR( ATTR_EXPRESSION, FACTOR_LEVEL, Frx )
+        if ( IS_LEAF_NODE( ENTROPY, ACCURACY, WRITE_THRESHOLD=RULE_ERROR_RATE, SUBTREE_SIZE ) ) {
+            RULE_RETVALS = WRITE_SPECIFICATION_FOR_RULE_FOR( ATTR_EXPRESSION, FACTOR_LEVEL, Frx, ORDER=ORDER )
             RULE_HAS_COMPLETE_COVERAGE = TRUE
         }
         else if ( TOLERATE_AS_LEAF_NODE( ENTROPY, ACCURACY, SUBTREE_SIZE ) ) {
-            RULE_RETVALS = WRITE_SPECIFICATION_FOR_RULE_FOR( ATTR_EXPRESSION, FACTOR_LEVEL, Frx, APPROX=TRUE )
+            RULE_RETVALS = WRITE_SPECIFICATION_FOR_RULE_FOR( ATTR_EXPRESSION, FACTOR_LEVEL, Frx, APPROX=TRUE, ORDER=ORDER )
             RULE_HAS_COMPLETE_COVERAGE = TRUE
         }
 
@@ -409,6 +424,7 @@ WRITE_RULE = function( WHICH_COLNUM=1, x=0, y=0, WRITE_THRESHOLD = RULE_ERROR_RA
             WHICH_ROWS_TO_KEEP = UPDATE_MAPPING_WITH_RULE( ATTR_EXPRESSION )
             DO_UPDATE(WHICH_ROWS_TO_KEEP, ORDER=1)
         } else {
+            # INSERT_DUMMY_NODE( ATTR_EXPRESSION, FACTOR_LEVEL, 1)
             DO_SECOND_ORDER_EXPANSION ( X, Y, WHICH_COLNUM, FACTOR_LEVEL, ATTRIBUTE_NAMES, ATTRIBUTE_VALUES )
         }
     }
@@ -456,11 +472,38 @@ DO_SECOND_ORDER_EXPANSION = function( X, Y, WHICH_COLNUM, FACTOR_LEVEL, ATTRIBUT
         } else  {
             # TODO: THE ABOVE NEEDS TO BECOME A LOOP TO EXPAND TO 3RD ORDER AND SO FORTH
             # TODO: CONSIDER: BY RANDOMLY SELECTING WHICH ATTRIBUTES TO EXAMINE AS OPPOSED TO ALL --> RANDOM SUBTREE (TO REDUCE TIME, 
+            # INSERT_DUMMY_NODE( ATTR_EXPRESSION, FACTOR_LEVEL, 2)
             SETUP_RECURSION( X, Y, ATTR_EXPRESSION, ATTRIBUTE_NAMES, ATTRIBUTE_VALUES )
         }
         ATTRIBUTE_NAMES  = POP( ATTRIBUTE_NAMES  )$QUEUE
         ATTRIBUTE_VALUES = POP( ATTRIBUTE_VALUES )$QUEUE
     }
+}
+# ######################################################################################################
+
+
+# ######################################################################################################
+DROP_DUMMY_NODE = function( ) {
+            PARSED_RULES = PARSED_RULES[1:(length(PARSED_RULES)-1)]
+}
+# ######################################################################################################
+
+
+
+# ######################################################################################################
+INSERT_DUMMY_NODE = function( ATTR_EXPRESSION, FACTOR_LEVEL, ORDER ) {
+            PARSED_RULES[[length(PARSED_RULES)+1]] <<- list( EXPRESSION=ATTR_EXPRESSION, 
+                                                             N=length(PARSED_RULES)+1, 
+                                                             FREQUENCY=0, 
+                                                             ACCURACY=0, 
+                                                             TARGET_FACTOR=FACTOR_LEVEL, 
+                                                             Frx="", 
+                                                             YNAME=GET_YCLASSNAME(), 
+                                                             YVAL="", 
+                                                             ORDER=ORDER, 
+                                                             LHS=ATTR_EXPRESSION, 
+                                                             RHS="DUMMY", 
+                                                             RULE="")  
 }
 # ######################################################################################################
 
@@ -935,6 +978,11 @@ if ( TEST_ENABLED ) {
     }
 
     SUMMARIZE_GENERATED_RULES()
+
+    dev.new(11,11)
+    DO_RULE_PLOT()
+    dev.print( pdf, 'plot_marginals_rules.pdf' )
+    dev.off()
 
 sink()
 options( opts )
